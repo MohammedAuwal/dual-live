@@ -7,6 +7,6 @@ import androidx.room.PrimaryKey
 data class League(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val description: String?,
-    val createdDate: Long = System.currentTimeMillis()
+    val description: String,
+    val isHomeAndAway: Boolean = false // New setting
 )

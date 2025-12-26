@@ -58,9 +58,9 @@ class MainActivity : ComponentActivity() {
                             onLeagueClick = { league -> selectedLeague = league; currentScreen = "team_list" },
                             onAddLeagueClick = { currentScreen = "create_league" }
                         )
-                        "create_league" -> CreateLeagueScreen(onSave = { name, desc ->
+                        "create_league" -> CreateLeagueScreen(onSave = { name, desc, homeAway ->
                             MainScope().launch {
-                                db.leagueDao().insertLeague(League(name = name, description = desc))
+                                db.leagueDao().insertLeague(League(name = name, description = desc, isHomeAndAway = homeAway))
                                 currentScreen = "league_list"
                             }
                         })
@@ -70,7 +70,10 @@ class MainActivity : ComponentActivity() {
                                     BottomAppBar {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = { 
-                                                generatedFixtures = FixtureGenerator.generateRoundRobin(teams)
+                                                generatedFixtures = FixtureGenerator.generateRoundRobin(
+                                                    teams, 
+                                                    selectedLeague?.isHomeAndAway ?: false
+                                                )
                                                 currentScreen = "fixture_list"
                                             }) { Text("DRAW") }
                                             TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS") }
