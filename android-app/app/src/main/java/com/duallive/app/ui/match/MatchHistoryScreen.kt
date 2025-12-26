@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -31,7 +31,7 @@ fun MatchHistoryScreen(
         if (matches.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.ListAlt, contentDescription = null, modifier = Modifier.size(64.dp), color = Color.LightGray)
+                    Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(64.dp), color = Color.LightGray)
                     Text("No matches played yet", color = Color.Gray)
                 }
             }
@@ -65,7 +65,6 @@ fun MatchHistoryScreen(
             AlertDialog(
                 onDismissRequest = { matchToDelete = null },
                 title = { Text("Delete Result?") },
-                text = { Text("This will remove the scores and update the league table. This cannot be undone.") },
                 confirmButton = {
                     TextButton(onClick = { 
                         onDeleteMatch(matchToDelete!!)
@@ -74,7 +73,8 @@ fun MatchHistoryScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { matchToDelete = null }) { Text("CANCEL") }
-                }
+                },
+                text = { Text("This will remove the scores and update the league table.") }
             )
         }
     }

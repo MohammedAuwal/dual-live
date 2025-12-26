@@ -36,7 +36,7 @@ fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
                 Text("Rem", modifier = Modifier.width(45.dp), color = MaterialTheme.colorScheme.secondary)
                 Text("Pts", modifier = Modifier.width(45.dp), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
             }
-            HorizontalDivider()
+            Divider()
             
             LazyColumn {
                 items(standings) { standing ->
@@ -52,7 +52,7 @@ fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
                         Text("$remaining", modifier = Modifier.width(45.dp), color = MaterialTheme.colorScheme.secondary)
                         Text("${standing.points}", modifier = Modifier.width(45.dp), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     }
-                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+                    Divider(thickness = 0.5.dp)
                 }
             }
         }
