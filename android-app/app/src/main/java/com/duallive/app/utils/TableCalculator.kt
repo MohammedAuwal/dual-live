@@ -6,13 +6,13 @@ import com.duallive.app.data.entity.Team
 
 object TableCalculator {
     fun calculate(teams: List<Team>, matches: List<Match>): List<Standing> {
-        var standingsMap = teams.associate { it.id to Standing(teamId = it.id) }.toMutableMap()
+        val standingsMap = teams.associate { it.id to Standing(teamId = it.id) }.toMutableMap()
 
         for (match in matches) {
             val home = standingsMap[match.homeTeamId] ?: continue
             val away = standingsMap[match.awayTeamId] ?: continue
 
-            // Update Goals For and Goals Against
+            // 1. Calculate base updates (Matches Played + Goals)
             var h = home.copy(
                 matchesPlayed = home.matchesPlayed + 1,
                 goalsFor = home.goalsFor + match.homeScore,
@@ -24,7 +24,7 @@ object TableCalculator {
                 goalsAgainst = away.goalsAgainst + match.homeScore
             )
 
-            // Update Wins, Draws, Losses, and Points
+            // 2. Calculate Outcome (W/D/L + Points)
             when {
                 match.homeScore > match.awayScore -> {
                     h = h.copy(wins = h.wins + 1, points = h.points + 3)
@@ -44,7 +44,11 @@ object TableCalculator {
             standingsMap[match.awayTeamId] = a
         }
 
-        // Professional Sorting: Points -> Goal Difference -> Goals For
+        // 3. Professional Sorting Logic
+        // Primary: Points
+        // Secondary: Goal Difference (GF - GA)
+        // Tertiary: Goals Scored (GF)
+        
         return standingsMap.values.toList().sortedWith(
             compareByDescending<Standing> { it.points }
                 .thenByDescending { it.goalsFor - it.goalsAgainst }
