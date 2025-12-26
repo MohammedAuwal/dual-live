@@ -13,9 +13,12 @@ import com.duallive.app.ui.team.*
 import com.duallive.app.ui.table.StandingsScreen
 import com.duallive.app.ui.match.MatchEntryScreen
 import com.duallive.app.ui.match.MatchDisplayScreen
+import com.duallive.app.ui.match.FixtureListScreen
 import com.duallive.app.data.AppDatabase
 import com.duallive.app.data.entity.*
 import com.duallive.app.utils.TableCalculator
+import com.duallive.app.utils.FixtureGenerator
+import com.duallive.app.utils.Fixture
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
@@ -34,6 +37,9 @@ class MainActivity : ComponentActivity() {
             var awayTeamForDisplay by remember { mutableStateOf<Team?>(null) }
             var homeScore by remember { mutableStateOf(0) }
             var awayScore by remember { mutableStateOf(0) }
+
+            // Fixture State
+            var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             val teams by if (selectedLeague != null) {
@@ -73,11 +79,17 @@ class MainActivity : ComponentActivity() {
                                 bottomBar = {
                                     BottomAppBar {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                            TextButton(onClick = { 
+                                                generatedFixtures = FixtureGenerator.generateRoundRobin(teams)
+                                                currentScreen = "fixture_list"
+                                            }) {
+                                                Text("AUTO DRAW")
+                                            }
                                             TextButton(onClick = { currentScreen = "match_entry" }) {
-                                                Text("NEW MATCH")
+                                                Text("MANUAL")
                                             }
                                             TextButton(onClick = { currentScreen = "standings" }) {
-                                                Text("VIEW TABLE")
+                                                Text("TABLE")
                                             }
                                         }
                                     }
@@ -107,6 +119,17 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                        "fixture_list" -> FixtureListScreen(
+                            fixtures = generatedFixtures,
+                            onMatchSelect = { home, away ->
+                                homeTeamForDisplay = home
+                                awayTeamForDisplay = away
+                                homeScore = 0
+                                awayScore = 0
+                                currentScreen = "live_display"
+                            },
+                            onBack = { currentScreen = "team_list" }
+                        )
                         "match_entry" -> MatchEntryScreen(
                             teams = teams,
                             onBack = { currentScreen = "team_list" },
