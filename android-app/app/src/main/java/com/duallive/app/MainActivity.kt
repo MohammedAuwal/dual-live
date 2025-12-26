@@ -12,6 +12,7 @@ import com.duallive.app.ui.league.*
 import com.duallive.app.ui.team.*
 import com.duallive.app.ui.table.StandingsScreen
 import com.duallive.app.ui.match.MatchEntryScreen
+import com.duallive.app.ui.match.MatchDisplayScreen
 import com.duallive.app.data.AppDatabase
 import com.duallive.app.data.entity.*
 import com.duallive.app.utils.TableCalculator
@@ -27,25 +28,23 @@ class MainActivity : ComponentActivity() {
             var currentScreen by remember { mutableStateOf("league_list") }
             var selectedLeague by remember { mutableStateOf<League?>(null) }
             var showAddTeamDialog by remember { mutableStateOf(false) }
-
-            // 1. Fetch Leagues
-            val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             
-            // 2. Fetch Teams for selected league
+            // States for the Live Scoreboard
+            var homeTeamForDisplay by remember { mutableStateOf<Team?>(null) }
+            var awayTeamForDisplay by remember { mutableStateOf<Team?>(null) }
+
+            val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             val teams by if (selectedLeague != null) {
                 db.teamDao().getTeamsByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
                 remember { mutableStateOf(emptyList<Team>()) }
             }
-
-            // 3. Fetch Matches for selected league
             val matches by if (selectedLeague != null) {
                 db.matchDao().getMatchesByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
                 remember { mutableStateOf(emptyList<Match>()) }
             }
             
-            // 4. AUTOMATIC CALCULATION: Runs whenever teams or matches change
             val standings = remember(teams, matches) {
                 TableCalculator.calculate(teams, matches)
             }
@@ -109,19 +108,21 @@ class MainActivity : ComponentActivity() {
                         "match_entry" -> MatchEntryScreen(
                             teams = teams,
                             onBack = { currentScreen = "team_list" },
-                            onSaveMatch = { hId, aId, hSc, aSc ->
-                                MainScope().launch {
-                                    db.matchDao().insertMatch(Match(
-                                        leagueId = selectedLeague!!.id, 
-                                        homeTeamId = hId, 
-                                        awayTeamId = aId, 
-                                        homeScore = hSc, 
-                                        awayScore = aSc
-                                    ))
-                                    currentScreen = "standings"
-                                }
+                            onLaunchDisplay = { home, away ->
+                                homeTeamForDisplay = home
+                                awayTeamForDisplay = away
+                                currentScreen = "live_display"
                             }
                         )
+                        "live_display" -> {
+                            MatchDisplayScreen(
+                                homeName = homeTeamForDisplay?.name ?: "Home",
+                                awayName = awayTeamForDisplay?.name ?: "Away",
+                                homeScore = 0, // We will add interactive scoring next
+                                awayScore = 0,
+                                onClose = { currentScreen = "team_list" }
+                            )
+                        }
                         "standings" -> {
                             Scaffold(
                                 bottomBar = {
