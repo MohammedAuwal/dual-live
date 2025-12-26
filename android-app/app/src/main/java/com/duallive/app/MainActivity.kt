@@ -14,6 +14,7 @@ import com.duallive.app.ui.table.StandingsScreen
 import com.duallive.app.ui.match.MatchEntryScreen
 import com.duallive.app.data.AppDatabase
 import com.duallive.app.data.entity.*
+import com.duallive.app.utils.TableCalculator
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
@@ -27,15 +28,27 @@ class MainActivity : ComponentActivity() {
             var selectedLeague by remember { mutableStateOf<League?>(null) }
             var showAddTeamDialog by remember { mutableStateOf(false) }
 
+            // 1. Fetch Leagues
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             
+            // 2. Fetch Teams for selected league
             val teams by if (selectedLeague != null) {
                 db.teamDao().getTeamsByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
                 remember { mutableStateOf(emptyList<Team>()) }
             }
+
+            // 3. Fetch Matches for selected league
+            val matches by if (selectedLeague != null) {
+                db.matchDao().getMatchesByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
+            } else {
+                remember { mutableStateOf(emptyList<Match>()) }
+            }
             
-            val standings = teams.map { Standing(teamId = it.id, points = 0) }
+            // 4. AUTOMATIC CALCULATION: Runs whenever teams or matches change
+            val standings = remember(teams, matches) {
+                TableCalculator.calculate(teams, matches)
+            }
 
             MaterialTheme {
                 Surface {
@@ -55,25 +68,27 @@ class MainActivity : ComponentActivity() {
                             }
                         })
                         "team_list" -> {
-                            Box {
-                                Column {
+                            Scaffold(
+                                bottomBar = {
+                                    BottomAppBar {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                            TextButton(onClick = { currentScreen = "match_entry" }) {
+                                                Text("RECORD MATCH")
+                                            }
+                                            TextButton(onClick = { currentScreen = "standings" }) {
+                                                Text("VIEW TABLE")
+                                            }
+                                        }
+                                    }
+                                }
+                            ) { padding ->
+                                Box(modifier = Modifier.padding(padding)) {
                                     TeamListScreen(
                                         leagueName = selectedLeague?.name ?: "",
                                         teams = teams,
                                         onBack = { currentScreen = "league_list" },
                                         onAddTeamClick = { showAddTeamDialog = true }
                                     )
-                                }
-                                
-                                // Floating navigation buttons for MVP testing
-                                Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Bottom) {
-                                    Button(onClick = { currentScreen = "match_entry" }, modifier = Modifier.fillMaxWidth()) {
-                                        Text("Record Match")
-                                    }
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Button(onClick = { currentScreen = "standings" }, modifier = Modifier.fillMaxWidth()) {
-                                        Text("View Table")
-                                    }
                                 }
                             }
 
@@ -96,7 +111,13 @@ class MainActivity : ComponentActivity() {
                             onBack = { currentScreen = "team_list" },
                             onSaveMatch = { hId, aId, hSc, aSc ->
                                 MainScope().launch {
-                                    db.matchDao().insertMatch(Match(leagueId = selectedLeague!!.id, homeTeamId = hId, awayTeamId = aId, homeScore = hSc, awayScore = aSc))
+                                    db.matchDao().insertMatch(Match(
+                                        leagueId = selectedLeague!!.id, 
+                                        homeTeamId = hId, 
+                                        awayTeamId = aId, 
+                                        homeScore = hSc, 
+                                        awayScore = aSc
+                                    ))
                                     currentScreen = "standings"
                                 }
                             }
