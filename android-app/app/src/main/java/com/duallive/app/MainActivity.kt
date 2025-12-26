@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
                         "league_list" -> LeagueListScreen(
                             leagues = leagues,
                             onLeagueClick = { league -> selectedLeague = league; currentScreen = "team_list" },
+                            onDeleteLeague = { league -> MainScope().launch { db.leagueDao().deleteLeague(league) } },
                             onAddLeagueClick = { currentScreen = "create_league" }
                         )
                         "create_league" -> CreateLeagueScreen(onSave = { name, desc, homeAway ->
