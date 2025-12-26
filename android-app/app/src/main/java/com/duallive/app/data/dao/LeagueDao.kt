@@ -6,11 +6,11 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LeagueDao {
-    @Query("SELECT * FROM leagues ORDER BY createdDate DESC")
+    @Query("SELECT * FROM leagues ORDER BY id DESC")
     fun getAllLeagues(): Flow<List<League>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertLeague(league: League): Long
+    @Insert
+    suspend fun insertLeague(league: League)
 
     @Delete
     suspend fun deleteLeague(league: League)

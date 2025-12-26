@@ -4,15 +4,14 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.duallive.app.data.dao.LeagueDao
-import com.duallive.app.data.dao.TeamDao
-import com.duallive.app.data.dao.MatchDao
-import com.duallive.app.data.entity.League
-import com.duallive.app.data.entity.Team
-import com.duallive.app.data.entity.Standing
-import com.duallive.app.data.entity.Match
+import com.duallive.app.data.dao.*
+import com.duallive.app.data.entity.*
 
-@Database(entities = [League::class, Team::class, Standing::class, Match::class], version = 2, exportSchema = false)
+@Database(
+    entities = [League::class, Team::class, Match::class], 
+    version = 2, 
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun leagueDao(): LeagueDao
     abstract fun teamDao(): TeamDao
@@ -29,7 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "dual_live_db"
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration() // This handles the schema change by clearing old data
                 .build()
                 INSTANCE = instance
                 instance
