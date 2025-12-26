@@ -11,62 +11,53 @@ import com.duallive.app.data.entity.Team
 @Composable
 fun MatchEntryScreen(
     teams: List<Team>,
-    onSaveMatch: (Int, Int, Int, Int) -> Unit,
+    onLaunchDisplay: (Team, Team) -> Unit,
     onBack: () -> Unit
 ) {
     var homeTeam by remember { mutableStateOf<Team?>(null) }
     var awayTeam by remember { mutableStateOf<Team?>(null) }
-    var homeScore by remember { mutableStateOf("0") }
-    var awayScore by remember { mutableStateOf("0") }
-    var expandedHome by remember { mutableStateOf(false) }
-    var expandedAway by remember { mutableStateOf(false) }
+    var homeExpanded by remember { mutableStateOf(false) }
+    var awayExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Record Match Result") }) }
+        topBar = { TopAppBar(title = { Text("Match Setup") }) }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             
+            Text("Select Teams for Live Display", style = MaterialTheme.typography.titleMedium)
+            
             // Home Team Selector
-            Text("Home Team")
             Box {
-                Button(onClick = { expandedHome = true }, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { homeExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(homeTeam?.name ?: "Select Home Team")
                 }
-                DropdownMenu(expanded = expandedHome, onDismissRequest = { expandedHome = false }) {
+                DropdownMenu(expanded = homeExpanded, onDismissRequest = { homeExpanded = false }) {
                     teams.forEach { team ->
-                        DropdownMenuItem(text = { Text(team.name) }, onClick = { homeTeam = team; expandedHome = false })
+                        DropdownMenuItem(text = { Text(team.name) }, onClick = { homeTeam = team; homeExpanded = false })
                     }
                 }
             }
 
             // Away Team Selector
-            Text("Away Team")
             Box {
-                Button(onClick = { expandedAway = true }, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { awayExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                     Text(awayTeam?.name ?: "Select Away Team")
                 }
-                DropdownMenu(expanded = expandedAway, onDismissRequest = { expandedAway = false }) {
-                    teams.forEach { team ->
-                        DropdownMenuItem(text = { Text(team.name) }, onClick = { awayTeam = team; expandedAway = false })
+                DropdownMenu(expanded = awayExpanded, onDismissRequest = { awayExpanded = false }) {
+                    teams.filter { it.id != homeTeam?.id }.forEach { team ->
+                        DropdownMenuItem(text = { Text(team.name) }, onClick = { awayTeam = team; awayExpanded = false })
                     }
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(value = homeScore, onValueChange = { homeScore = it }, label = { Text("Home Score") }, modifier = Modifier.weight(1f))
-                OutlinedTextField(value = awayScore, onValueChange = { awayScore = it }, label = { Text("Away Score") }, modifier = Modifier.weight(1f))
-            }
+            Spacer(modifier = Modifier.weight(1f))
 
             Button(
-                onClick = { 
-                    if (homeTeam != null && awayTeam != null && homeTeam != awayTeam) {
-                        onSaveMatch(homeTeam!!.id, awayTeam!!.id, homeScore.toIntOrNull() ?: 0, awayScore.toIntOrNull() ?: 0)
-                    }
-                },
+                onClick = { if (homeTeam != null && awayTeam != null) onLaunchDisplay(homeTeam!!, awayTeam!!) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = homeTeam != null && awayTeam != null && homeTeam != awayTeam
             ) {
-                Text("Save Result & Update Table")
+                Text("LAUNCH SCOREBOARD (TV MODE)")
             }
             
             TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
