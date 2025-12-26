@@ -23,12 +23,20 @@ import com.duallive.app.utils.Fixture
 @Composable
 fun FixtureListScreen(
     fixtures: List<Fixture>,
-    matches: List<Match>, // New parameter to track results
+    matches: List<Match>,
     onMatchSelect: (Team, Team) -> Unit,
     onBack: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     
+    // Calculate Progress
+    val totalFixtures = fixtures.size
+    val completedCount = fixtures.count { f -> 
+        matches.any { m -> m.homeTeamId == f.homeTeam.id && m.awayTeamId == f.awayTeam.id }
+    }
+    val progress = if (totalFixtures > 0) completedCount.toFloat() / totalFixtures else 0f
+    val percentage = (progress * 100).toInt()
+
     val filteredFixtures = remember(searchQuery, fixtures) {
         if (searchQuery.isBlank()) fixtures
         else fixtures.filter { 
@@ -42,6 +50,28 @@ fun FixtureListScreen(
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Tournament Schedule", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         
+        // Progress Section
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.weight(1f).height(8.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+            Text(
+                text = "$percentage%",
+                modifier = Modifier.padding(start = 8.dp),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Text(
+            text = "$completedCount of $totalFixtures matches played",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline
+        )
+
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -66,7 +96,6 @@ fun FixtureListScreen(
                 }
 
                 items(matchesInRound) { fixture ->
-                    // Logic to find if this specific fixture has a result saved
                     val completedMatch = matches.find { 
                         it.homeTeamId == fixture.homeTeam.id && it.awayTeamId == fixture.awayTeam.id 
                     }
@@ -93,7 +122,6 @@ fun FixtureListScreen(
                             )
                             
                             if (isDone) {
-                                // Show the score instead of "vs"
                                 Text(
                                     text = "${completedMatch?.homeScore} - ${completedMatch?.awayScore}",
                                     modifier = Modifier.padding(horizontal = 8.dp),
@@ -116,7 +144,7 @@ fun FixtureListScreen(
                             if (isDone) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Completed",
+                                    contentDescription = null,
                                     tint = Color(0xFF4CAF50),
                                     modifier = Modifier.padding(start = 8.dp).size(20.dp)
                                 )
