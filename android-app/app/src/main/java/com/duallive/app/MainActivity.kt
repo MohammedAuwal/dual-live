@@ -70,12 +70,13 @@ class MainActivity : ComponentActivity() {
                                     BottomAppBar {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = { 
-                                                generatedFixtures = FixtureGenerator.generateRoundRobin(
-                                                    teams, 
-                                                    selectedLeague?.isHomeAndAway ?: false
-                                                )
+                                                generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
                                                 currentScreen = "fixture_list"
                                             }) { Text("DRAW") }
+                                            
+                                            // RESTORED MANUAL BUTTON
+                                            TextButton(onClick = { currentScreen = "match_entry" }) { Text("MANUAL") }
+                                            
                                             TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS") }
                                             TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
                                         }
@@ -91,6 +92,14 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         "fixture_list" -> FixtureListScreen(fixtures = generatedFixtures, onMatchSelect = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" }, onBack = { currentScreen = "team_list" })
+                        
+                        // MANUAL ENTRY NAVIGATION
+                        "match_entry" -> MatchEntryScreen(
+                            teams = teams, 
+                            onBack = { currentScreen = "team_list" },
+                            onLaunchDisplay = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" }
+                        )
+
                         "match_history" -> MatchHistoryScreen(
                             matches = matches,
                             teams = teams,
