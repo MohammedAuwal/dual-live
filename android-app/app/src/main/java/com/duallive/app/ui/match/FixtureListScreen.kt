@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Team
 import com.duallive.app.utils.Fixture
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FixtureListScreen(
     fixtures: List<Fixture>,

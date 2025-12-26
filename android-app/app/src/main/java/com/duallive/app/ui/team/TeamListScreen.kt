@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,14 +46,14 @@ fun TeamListScreen(
             if (teams.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Button(onClick = onAddTeamClick) {
-                        Icon(Icons.Default.Groups, contentDescription = null)
+                        Icon(Icons.Default.Person, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text("Add Your First Teams")
                     }
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2), // Two columns makes it look like a dashboard
+                    columns = GridCells.Fixed(2),
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -75,7 +75,6 @@ fun TeamListScreen(
                             }
                         }
                     }
-                    // Add an extra card for adding more teams
                     item {
                         OutlinedCard(
                             onClick = onAddTeamClick,
