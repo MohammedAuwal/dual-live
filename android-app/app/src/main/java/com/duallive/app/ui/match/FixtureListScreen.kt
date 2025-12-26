@@ -19,12 +19,12 @@ fun FixtureListScreen(
     onBack: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Automatic Fixtures", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text("Tap a match to launch the Scoreboard", style = MaterialTheme.typography.bodySmall)
+        Text("Tournament Schedule", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text("Total League Matches: ${fixtures.size}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
             items(fixtures) { fixture ->
                 Card(
                     onClick = { onMatchSelect(fixture.homeTeam, fixture.awayTeam) },
@@ -35,7 +35,7 @@ fun FixtureListScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(fixture.homeTeam.name, modifier = Modifier.weight(1f))
-                        Text("VS", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Text("VS", fontWeight = FontWeight.Bold)
                         Text(fixture.awayTeam.name, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                     }
                 }
@@ -43,7 +43,7 @@ fun FixtureListScreen(
         }
         
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            Text("Back")
+            Text("Back to Dashboard")
         }
     }
 }

@@ -13,16 +13,18 @@ import com.duallive.app.data.entity.Team
 
 @Composable
 fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
+    val totalTeams = teams.size
+    val matchesPerTeam = if (totalTeams > 0) totalTeams - 1 else 0
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("League Table", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text("Each team plays $matchesPerTeam matches total", style = MaterialTheme.typography.bodySmall)
+        
         Spacer(modifier = Modifier.height(16.dp))
         
         Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
             Text("Team", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-            Text("P", modifier = Modifier.width(30.dp), fontWeight = FontWeight.Bold)
-            Text("W", modifier = Modifier.width(30.dp))
-            Text("D", modifier = Modifier.width(30.dp))
-            Text("L", modifier = Modifier.width(30.dp))
+            Text("P/Rem", modifier = Modifier.width(60.dp), fontWeight = FontWeight.Bold) // Played / Remaining
             Text("Pts", modifier = Modifier.width(40.dp), fontWeight = FontWeight.Bold)
         }
         Divider(modifier = Modifier.padding(vertical = 4.dp))
@@ -30,12 +32,12 @@ fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
         LazyColumn {
             items(standings) { standing ->
                 val teamName = teams.find { it.id == standing.teamId }?.name ?: "Unknown"
+                val remaining = matchesPerTeam - standing.matchesPlayed
+                
                 Row(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
                     Text(teamName, modifier = Modifier.weight(1f))
-                    Text("${standing.matchesPlayed}", modifier = Modifier.width(30.dp))
-                    Text("${standing.wins}", modifier = Modifier.width(30.dp))
-                    Text("${standing.draws}", modifier = Modifier.width(30.dp))
-                    Text("${standing.losses}", modifier = Modifier.width(30.dp))
+                    // Shows "5/14" meaning 5 played, 14 remaining
+                    Text("${standing.matchesPlayed}/$remaining", modifier = Modifier.width(60.dp))
                     Text("${standing.points}", modifier = Modifier.width(40.dp), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
