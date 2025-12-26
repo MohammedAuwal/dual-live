@@ -22,7 +22,8 @@ fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
             Text("W", modifier = Modifier.width(30.dp))
             Text("Pts", modifier = Modifier.width(40.dp))
         }
-        HorizontalDivider()
+        // Changed HorizontalDivider to Divider for better compatibility
+        Divider(modifier = Modifier.padding(vertical = 4.dp))
         
         LazyColumn {
             items(standings.sortedByDescending { it.points }) { standing ->
