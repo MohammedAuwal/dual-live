@@ -3,10 +3,15 @@ package com.duallive.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.duallive.app.ui.league.*
 import com.duallive.app.ui.team.*
+import com.duallive.app.ui.table.StandingsScreen
+import com.duallive.app.ui.match.MatchEntryScreen
 import com.duallive.app.data.AppDatabase
 import com.duallive.app.data.entity.*
 import kotlinx.coroutines.MainScope
@@ -24,21 +29,22 @@ class MainActivity : ComponentActivity() {
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             
-            // Only fetch teams if a league is selected
             val teams by if (selectedLeague != null) {
                 db.teamDao().getTeamsByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
                 remember { mutableStateOf(emptyList<Team>()) }
             }
+            
+            val standings = teams.map { Standing(teamId = it.id, points = 0) }
 
             MaterialTheme {
                 Surface {
                     when (currentScreen) {
                         "league_list" -> LeagueListScreen(
                             leagues = leagues,
-                            onLeagueClick = { league ->
+                            onLeagueClick = { league -> 
                                 selectedLeague = league
-                                currentScreen = "team_list"
+                                currentScreen = "team_list" 
                             },
                             onAddLeagueClick = { currentScreen = "create_league" }
                         )
@@ -49,22 +55,63 @@ class MainActivity : ComponentActivity() {
                             }
                         })
                         "team_list" -> {
-                            TeamListScreen(
-                                leagueName = selectedLeague?.name ?: "Teams",
-                                teams = teams,
-                                onBack = { currentScreen = "league_list" },
-                                onAddTeamClick = { showAddTeamDialog = true }
-                            )
+                            Box {
+                                Column {
+                                    TeamListScreen(
+                                        leagueName = selectedLeague?.name ?: "",
+                                        teams = teams,
+                                        onBack = { currentScreen = "league_list" },
+                                        onAddTeamClick = { showAddTeamDialog = true }
+                                    )
+                                }
+                                
+                                // Floating navigation buttons for MVP testing
+                                Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.Bottom) {
+                                    Button(onClick = { currentScreen = "match_entry" }, modifier = Modifier.fillMaxWidth()) {
+                                        Text("Record Match")
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(onClick = { currentScreen = "standings" }, modifier = Modifier.fillMaxWidth()) {
+                                        Text("View Table")
+                                    }
+                                }
+                            }
+
                             if (showAddTeamDialog) {
                                 AddTeamScreen(
-                                    onSave = { teamName ->
+                                    onSave = { teamNames ->
                                         MainScope().launch {
-                                            db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = teamName))
+                                            teamNames.forEach { name ->
+                                                db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = name))
+                                            }
                                             showAddTeamDialog = false
                                         }
                                     },
                                     onCancel = { showAddTeamDialog = false }
                                 )
+                            }
+                        }
+                        "match_entry" -> MatchEntryScreen(
+                            teams = teams,
+                            onBack = { currentScreen = "team_list" },
+                            onSaveMatch = { hId, aId, hSc, aSc ->
+                                MainScope().launch {
+                                    db.matchDao().insertMatch(Match(leagueId = selectedLeague!!.id, homeTeamId = hId, awayTeamId = aId, homeScore = hSc, awayScore = aSc))
+                                    currentScreen = "standings"
+                                }
+                            }
+                        )
+                        "standings" -> {
+                            Scaffold(
+                                bottomBar = {
+                                    Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                        Text("Back to Teams")
+                                    }
+                                }
+                            ) { p ->
+                                Box(modifier = Modifier.padding(p)) {
+                                    StandingsScreen(teams = teams, standings = standings)
+                                }
                             }
                         }
                     }
