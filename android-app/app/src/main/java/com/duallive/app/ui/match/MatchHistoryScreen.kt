@@ -4,11 +4,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Match
@@ -18,57 +20,59 @@ import com.duallive.app.data.entity.Team
 fun MatchHistoryScreen(
     matches: List<Match>,
     teams: List<Team>,
+    onDeleteMatch: (Match) -> Unit,
     onBack: () -> Unit
 ) {
+    var matchToDelete by remember { mutableStateOf<Match?>(null) }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Match Results", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         
         if (matches.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.History, contentDescription = null, modifier = Modifier.size(64.dp), color = MaterialTheme.colorScheme.outline)
-                    Text("No matches played yet", color = MaterialTheme.colorScheme.outline)
-                }
+                Text("No matches played yet", color = Color.Gray)
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(matches.reversed()) { match -> // Most recent first
-                    val homeName = teams.find { it.id == match.homeTeamId }?.name ?: "Unknown"
-                    val awayName = teams.find { it.id == match.awayTeamId }?.name ?: "Unknown"
-                    
+            LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(matches.reversed()) { match ->
+                    val home = teams.find { it.id == match.homeTeamId }?.name ?: "Unknown"
+                    val away = teams.find { it.id == match.awayTeamId }?.name ?: "Unknown"
+
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(homeName, modifier = Modifier.weight(1f))
-                            
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = MaterialTheme.shapes.small
-                            ) {
-                                Text(
-                                    "${match.homeScore} - ${match.awayScore}",
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("$home vs $away", fontWeight = FontWeight.Bold)
+                                Text("Score: ${match.homeScore} - ${match.awayScore}", style = MaterialTheme.typography.bodyMedium)
                             }
-                            
-                            Text(awayName, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            IconButton(onClick = { matchToDelete = match }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                            }
                         }
                     }
                 }
             }
         }
         
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Text("Back")
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+
+        if (matchToDelete != null) {
+            AlertDialog(
+                onDismissRequest = { matchToDelete = null },
+                title = { Text("Delete Result?") },
+                text = { Text("This will remove the scores and update the league table points. This cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        onDeleteMatch(matchToDelete!!)
+                        matchToDelete = null 
+                    }) { Text("DELETE", color = Color.Red) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { matchToDelete = null }) { Text("CANCEL") }
+                }
+            )
         }
     }
 }

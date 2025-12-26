@@ -6,9 +6,12 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MatchDao {
-    @Query("SELECT * FROM matches WHERE leagueId = :leagueId ORDER BY id DESC")
+    @Insert
+    suspend fun insertMatch(match: Match)
+
+    @Query("SELECT * FROM matches WHERE leagueId = :leagueId")
     fun getMatchesByLeague(leagueId: Int): Flow<List<Match>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMatch(match: Match)
+    @Delete
+    suspend fun deleteMatch(match: Match)
 }
