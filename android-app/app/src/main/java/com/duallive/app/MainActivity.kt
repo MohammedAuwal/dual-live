@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
                                 AddTeamScreen(onSave = { names -> MainScope().launch { names.forEach { db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = it)) }; showAddTeamDialog = false } }, onCancel = { showAddTeamDialog = false })
                             }
                         }
-                        "fixture_list" -> FixtureListScreen(fixtures = generatedFixtures, onMatchSelect = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" }, onBack = { currentScreen = "team_list" })
+                        "fixture_list" -> FixtureListScreen(fixtures = generatedFixtures, matches = matches, onMatchSelect = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" }, onBack = { currentScreen = "team_list" })
                         
                         // MANUAL ENTRY NAVIGATION
                         "match_entry" -> MatchEntryScreen(
