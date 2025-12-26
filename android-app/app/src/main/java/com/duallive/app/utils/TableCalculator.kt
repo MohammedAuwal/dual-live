@@ -6,30 +6,49 @@ import com.duallive.app.data.entity.Team
 
 object TableCalculator {
     fun calculate(teams: List<Team>, matches: List<Match>): List<Standing> {
-        val standingsMap = teams.associate { it.id to Standing(teamId = it.id) }.toMutableMap()
+        var standingsMap = teams.associate { it.id to Standing(teamId = it.id) }.toMutableMap()
 
         for (match in matches) {
             val home = standingsMap[match.homeTeamId] ?: continue
             val away = standingsMap[match.awayTeamId] ?: continue
 
-            val updatedHome = home.copy(matchesPlayed = home.matchesPlayed + 1)
-            val updatedAway = away.copy(matchesPlayed = away.matchesPlayed + 1)
+            // Update Goals For and Goals Against
+            var h = home.copy(
+                matchesPlayed = home.matchesPlayed + 1,
+                goalsFor = home.goalsFor + match.homeScore,
+                goalsAgainst = home.goalsAgainst + match.awayScore
+            )
+            var a = away.copy(
+                matchesPlayed = away.matchesPlayed + 1,
+                goalsFor = away.goalsFor + match.awayScore,
+                goalsAgainst = away.goalsAgainst + match.homeScore
+            )
 
+            // Update Wins, Draws, Losses, and Points
             when {
                 match.homeScore > match.awayScore -> {
-                    standingsMap[match.homeTeamId] = updatedHome.copy(wins = home.wins + 1, points = home.points + 3)
-                    standingsMap[match.awayTeamId] = updatedAway.copy(losses = away.losses + 1)
+                    h = h.copy(wins = h.wins + 1, points = h.points + 3)
+                    a = a.copy(losses = a.losses + 1)
                 }
                 match.homeScore < match.awayScore -> {
-                    standingsMap[match.awayTeamId] = updatedAway.copy(wins = away.wins + 1, points = away.points + 3)
-                    standingsMap[match.homeTeamId] = updatedHome.copy(losses = home.losses + 1)
+                    a = a.copy(wins = a.wins + 1, points = a.points + 3)
+                    h = h.copy(losses = h.losses + 1)
                 }
                 else -> {
-                    standingsMap[match.homeTeamId] = updatedHome.copy(draws = home.draws + 1, points = home.points + 1)
-                    standingsMap[match.awayTeamId] = updatedAway.copy(draws = away.draws + 1, points = away.points + 1)
+                    h = h.copy(draws = h.draws + 1, points = h.points + 1)
+                    a = a.copy(draws = a.draws + 1, points = a.points + 1)
                 }
             }
+            
+            standingsMap[match.homeTeamId] = h
+            standingsMap[match.awayTeamId] = a
         }
-        return standingsMap.values.toList().sortedByDescending { it.points }
+
+        // Professional Sorting: Points -> Goal Difference -> Goals For
+        return standingsMap.values.toList().sortedWith(
+            compareByDescending<Standing> { it.points }
+                .thenByDescending { it.goalsFor - it.goalsAgainst }
+                .thenByDescending { it.goalsFor }
+        )
     }
 }
