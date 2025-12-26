@@ -5,12 +5,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Match
@@ -28,12 +28,11 @@ fun MatchHistoryScreen(
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Match Results", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         
+        Spacer(modifier = Modifier.height(16.dp))
+
         if (matches.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.List, contentDescription = null, modifier = Modifier.size(64.dp), color = Color.LightGray)
-                    Text("No matches played yet", color = Color.Gray)
-                }
+                Text("No matches played yet", color = Color.Gray)
             }
         } else {
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -51,7 +50,11 @@ fun MatchHistoryScreen(
                                 Text("Score: ${match.homeScore} - ${match.awayScore}", style = MaterialTheme.typography.bodyMedium)
                             }
                             IconButton(onClick = { matchToDelete = match }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                                Icon(
+                                    imageVector = Icons.Default.Delete as ImageVector,
+                                    contentDescription = "Delete",
+                                    tint = Color.Red
+                                )
                             }
                         }
                     }
@@ -65,6 +68,7 @@ fun MatchHistoryScreen(
             AlertDialog(
                 onDismissRequest = { matchToDelete = null },
                 title = { Text("Delete Result?") },
+                text = { Text("Remove this match? Points will be updated.") },
                 confirmButton = {
                     TextButton(onClick = { 
                         onDeleteMatch(matchToDelete!!)
@@ -73,8 +77,7 @@ fun MatchHistoryScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { matchToDelete = null }) { Text("CANCEL") }
-                },
-                text = { Text("This will remove the scores and update the league table.") }
+                }
             )
         }
     }
