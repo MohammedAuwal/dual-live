@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Team
 import com.duallive.app.utils.Fixture
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun FixtureListScreen(
     fixtures: List<Fixture>,
@@ -25,7 +25,6 @@ fun FixtureListScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     
-    // Filter fixtures based on team names locally
     val filteredFixtures = remember(searchQuery, fixtures) {
         if (searchQuery.isBlank()) fixtures
         else fixtures.filter { 
@@ -39,18 +38,13 @@ fun FixtureListScreen(
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Tournament Schedule", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         
-        // Search Bar
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             placeholder = { Text("Search team name...") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            singleLine = true,
-            colors = TextFieldDefaults.colors(
-                unfocusedContainerColor = Color.Transparent,
-                focusedContainerColor = Color.Transparent
-            )
+            singleLine = true
         )
         
         LazyColumn(modifier = Modifier.weight(1f)) {
@@ -79,13 +73,13 @@ fun FixtureListScreen(
                             Text(
                                 text = fixture.homeTeam.name, 
                                 modifier = Modifier.weight(1f),
-                                fontWeight = if(fixture.homeTeam.name.contains(searchQuery, true) && searchQuery.isNotEmpty()) FontWeight.ExtraBold else FontWeight.Normal
+                                fontWeight = if(searchQuery.isNotEmpty() && fixture.homeTeam.name.contains(searchQuery, true)) FontWeight.ExtraBold else FontWeight.Normal
                             )
                             Text("vs", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
                             Text(
                                 text = fixture.awayTeam.name, 
                                 modifier = Modifier.weight(1f),
-                                fontWeight = if(fixture.awayTeam.name.contains(searchQuery, true) && searchQuery.isNotEmpty()) FontWeight.ExtraBold else FontWeight.Normal
+                                fontWeight = if(searchQuery.isNotEmpty() && fixture.awayTeam.name.contains(searchQuery, true)) FontWeight.ExtraBold else FontWeight.Normal
                             )
                         }
                     }
