@@ -5,7 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,7 +30,10 @@ fun MatchHistoryScreen(
         
         if (matches.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("No matches played yet", color = Color.Gray)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.ListAlt, contentDescription = null, modifier = Modifier.size(64.dp), color = Color.LightGray)
+                    Text("No matches played yet", color = Color.Gray)
+                }
             }
         } else {
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -56,13 +59,13 @@ fun MatchHistoryScreen(
             }
         }
         
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Back") }
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Text("Back") }
 
         if (matchToDelete != null) {
             AlertDialog(
                 onDismissRequest = { matchToDelete = null },
                 title = { Text("Delete Result?") },
-                text = { Text("This will remove the scores and update the league table points. This cannot be undone.") },
+                text = { Text("This will remove the scores and update the league table. This cannot be undone.") },
                 confirmButton = {
                     TextButton(onClick = { 
                         onDeleteMatch(matchToDelete!!)
