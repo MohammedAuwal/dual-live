@@ -5,8 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -21,12 +23,37 @@ fun FixtureListScreen(
     onMatchSelect: (Team, Team) -> Unit,
     onBack: () -> Unit
 ) {
-    val groupedFixtures = fixtures.groupBy { it.round }
+    var searchQuery by remember { mutableStateOf("") }
+    
+    // Filter fixtures based on team names locally
+    val filteredFixtures = remember(searchQuery, fixtures) {
+        if (searchQuery.isBlank()) fixtures
+        else fixtures.filter { 
+            it.homeTeam.name.contains(searchQuery, ignoreCase = true) || 
+            it.awayTeam.name.contains(searchQuery, ignoreCase = true) 
+        }
+    }
+
+    val groupedFixtures = filteredFixtures.groupBy { it.round }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Tournament Schedule", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         
-        LazyColumn(modifier = Modifier.weight(1f).padding(vertical = 8.dp)) {
+        // Search Bar
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            placeholder = { Text("Search team name...") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                unfocusedContainerColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent
+            )
+        )
+        
+        LazyColumn(modifier = Modifier.weight(1f)) {
             groupedFixtures.forEach { (round, matchesInRound) ->
                 stickyHeader {
                     Text(
@@ -49,16 +76,24 @@ fun FixtureListScreen(
                             modifier = Modifier.padding(16.dp).fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(fixture.homeTeam.name, modifier = Modifier.weight(1f))
+                            Text(
+                                text = fixture.homeTeam.name, 
+                                modifier = Modifier.weight(1f),
+                                fontWeight = if(fixture.homeTeam.name.contains(searchQuery, true) && searchQuery.isNotEmpty()) FontWeight.ExtraBold else FontWeight.Normal
+                            )
                             Text("vs", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
-                            Text(fixture.awayTeam.name, modifier = Modifier.weight(1f))
+                            Text(
+                                text = fixture.awayTeam.name, 
+                                modifier = Modifier.weight(1f),
+                                fontWeight = if(fixture.awayTeam.name.contains(searchQuery, true) && searchQuery.isNotEmpty()) FontWeight.ExtraBold else FontWeight.Normal
+                            )
                         }
                     }
                 }
             }
         }
 
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             Text("Back to Dashboard")
         }
     }
