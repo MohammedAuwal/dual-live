@@ -11,14 +11,10 @@ import androidx.compose.ui.unit.dp
 import com.duallive.app.ui.league.*
 import com.duallive.app.ui.team.*
 import com.duallive.app.ui.table.StandingsScreen
-import com.duallive.app.ui.match.MatchEntryScreen
-import com.duallive.app.ui.match.MatchDisplayScreen
-import com.duallive.app.ui.match.FixtureListScreen
+import com.duallive.app.ui.match.*
 import com.duallive.app.data.AppDatabase
 import com.duallive.app.data.entity.*
-import com.duallive.app.utils.TableCalculator
-import com.duallive.app.utils.FixtureGenerator
-import com.duallive.app.utils.Fixture
+import com.duallive.app.utils.*
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
@@ -28,11 +24,12 @@ class MainActivity : ComponentActivity() {
         val db = AppDatabase.getDatabase(this)
 
         setContent {
+            // Navigation State
             var currentScreen by remember { mutableStateOf("league_list") }
             var selectedLeague by remember { mutableStateOf<League?>(null) }
             var showAddTeamDialog by remember { mutableStateOf(false) }
             
-            // Live Match Session State
+            // Live Match State
             var homeTeamForDisplay by remember { mutableStateOf<Team?>(null) }
             var awayTeamForDisplay by remember { mutableStateOf<Team?>(null) }
             var homeScore by remember { mutableStateOf(0) }
@@ -41,6 +38,7 @@ class MainActivity : ComponentActivity() {
             // Fixture State
             var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
 
+            // Database Observers
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             val teams by if (selectedLeague != null) {
                 db.teamDao().getTeamsByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
@@ -53,12 +51,13 @@ class MainActivity : ComponentActivity() {
                 remember { mutableStateOf(emptyList<Match>()) }
             }
             
+            // Auto-Calculated Standing Table
             val standings = remember(teams, matches) {
                 TableCalculator.calculate(teams, matches)
             }
 
             MaterialTheme {
-                Surface {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     when (currentScreen) {
                         "league_list" -> LeagueListScreen(
                             leagues = leagues,
@@ -68,12 +67,14 @@ class MainActivity : ComponentActivity() {
                             },
                             onAddLeagueClick = { currentScreen = "create_league" }
                         )
+                        
                         "create_league" -> CreateLeagueScreen(onSave = { name, desc ->
                             MainScope().launch {
                                 db.leagueDao().insertLeague(League(name = name, description = desc))
                                 currentScreen = "league_list"
                             }
                         })
+                        
                         "team_list" -> {
                             Scaffold(
                                 bottomBar = {
@@ -82,12 +83,12 @@ class MainActivity : ComponentActivity() {
                                             TextButton(onClick = { 
                                                 generatedFixtures = FixtureGenerator.generateRoundRobin(teams)
                                                 currentScreen = "fixture_list"
-                                            }) {
-                                                Text("AUTO DRAW")
+                                            }) { Text("AUTO DRAW") }
+                                            
+                                            TextButton(onClick = { currentScreen = "match_history" }) {
+                                                Text("RESULTS")
                                             }
-                                            TextButton(onClick = { currentScreen = "match_entry" }) {
-                                                Text("MANUAL")
-                                            }
+                                            
                                             TextButton(onClick = { currentScreen = "standings" }) {
                                                 Text("TABLE")
                                             }
@@ -119,6 +120,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+
                         "fixture_list" -> FixtureListScreen(
                             fixtures = generatedFixtures,
                             onMatchSelect = { home, away ->
@@ -130,6 +132,13 @@ class MainActivity : ComponentActivity() {
                             },
                             onBack = { currentScreen = "team_list" }
                         )
+
+                        "match_history" -> MatchHistoryScreen(
+                            matches = matches,
+                            teams = teams,
+                            onBack = { currentScreen = "team_list" }
+                        )
+
                         "match_entry" -> MatchEntryScreen(
                             teams = teams,
                             onBack = { currentScreen = "team_list" },
@@ -141,6 +150,7 @@ class MainActivity : ComponentActivity() {
                                 currentScreen = "live_display"
                             }
                         )
+
                         "live_display" -> {
                             MatchDisplayScreen(
                                 homeName = homeTeamForDisplay?.name ?: "Home",
@@ -158,17 +168,18 @@ class MainActivity : ComponentActivity() {
                                             homeScore = homeScore,
                                             awayScore = awayScore
                                         ))
-                                        currentScreen = "standings"
+                                        currentScreen = "match_history"
                                     }
                                 },
                                 onCancel = { currentScreen = "team_list" }
                             )
                         }
+
                         "standings" -> {
                             Scaffold(
                                 bottomBar = {
                                     Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                        Text("Back to Teams")
+                                        Text("Back to Dashboard")
                                     }
                                 }
                             ) { p ->
