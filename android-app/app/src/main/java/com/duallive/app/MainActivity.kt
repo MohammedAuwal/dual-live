@@ -29,9 +29,11 @@ class MainActivity : ComponentActivity() {
             var selectedLeague by remember { mutableStateOf<League?>(null) }
             var showAddTeamDialog by remember { mutableStateOf(false) }
             
-            // States for the Live Scoreboard
+            // Live Match Session State
             var homeTeamForDisplay by remember { mutableStateOf<Team?>(null) }
             var awayTeamForDisplay by remember { mutableStateOf<Team?>(null) }
+            var homeScore by remember { mutableStateOf(0) }
+            var awayScore by remember { mutableStateOf(0) }
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             val teams by if (selectedLeague != null) {
@@ -72,7 +74,7 @@ class MainActivity : ComponentActivity() {
                                     BottomAppBar {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = { currentScreen = "match_entry" }) {
-                                                Text("RECORD MATCH")
+                                                Text("NEW MATCH")
                                             }
                                             TextButton(onClick = { currentScreen = "standings" }) {
                                                 Text("VIEW TABLE")
@@ -111,6 +113,8 @@ class MainActivity : ComponentActivity() {
                             onLaunchDisplay = { home, away ->
                                 homeTeamForDisplay = home
                                 awayTeamForDisplay = away
+                                homeScore = 0
+                                awayScore = 0
                                 currentScreen = "live_display"
                             }
                         )
@@ -118,9 +122,23 @@ class MainActivity : ComponentActivity() {
                             MatchDisplayScreen(
                                 homeName = homeTeamForDisplay?.name ?: "Home",
                                 awayName = awayTeamForDisplay?.name ?: "Away",
-                                homeScore = 0, // We will add interactive scoring next
-                                awayScore = 0,
-                                onClose = { currentScreen = "team_list" }
+                                homeScore = homeScore,
+                                awayScore = awayScore,
+                                onUpdateHome = { homeScore += it },
+                                onUpdateAway = { awayScore += it },
+                                onSaveAndClose = {
+                                    MainScope().launch {
+                                        db.matchDao().insertMatch(Match(
+                                            leagueId = selectedLeague!!.id,
+                                            homeTeamId = homeTeamForDisplay!!.id,
+                                            awayTeamId = awayTeamForDisplay!!.id,
+                                            homeScore = homeScore,
+                                            awayScore = awayScore
+                                        ))
+                                        currentScreen = "standings"
+                                    }
+                                },
+                                onCancel = { currentScreen = "team_list" }
                             )
                         }
                         "standings" -> {
