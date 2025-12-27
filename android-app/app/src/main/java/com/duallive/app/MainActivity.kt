@@ -19,6 +19,7 @@ import com.duallive.app.data.entity.*
 import com.duallive.app.utils.*
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -173,22 +174,19 @@ class MainActivity : ComponentActivity() {
                             onBack = { currentScreen = "standings" },
                             onConfirmKnockouts = { qualifiedTeams ->
                                 MainScope().launch {
-                                    val leagueObj = League(
-                                        name = "${selectedLeague?.name ?: ""} - Knockouts",
-                                        description = "Knockout phase",
-                                        isHomeAndAway = false,
-                                        type = LeagueType.CLASSIC
+                                    val kName = "${selectedLeague?.name ?: ""} - Knockouts"
+                                    db.leagueDao().insertLeague(
+                                        League(name = kName, description = "Knockout phase", isHomeAndAway = false, type = LeagueType.CLASSIC)
                                     )
-                                    val newIdLong = db.leagueDao().insertLeague(leagueObj)
-                                    val finalLeagueId = newIdLong.toInt()
                                     
-                                    qualifiedTeams.forEach { team ->
-                                        val newTeam = Team(
-                                            leagueId = finalLeagueId, 
-                                            name = team.name, 
-                                            groupName = null
-                                        )
-                                        db.teamDao().insertTeam(newTeam)
+                                    // Bypassing the return ID issue by finding the league by name
+                                    val allLeagues = db.leagueDao().getAllLeagues().first()
+                                    val newLeague = allLeagues.find { it.name == kName }
+                                    
+                                    newLeague?.let { league ->
+                                        qualifiedTeams.forEach { team ->
+                                            db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null))
+                                        }
                                     }
                                     currentScreen = "league_list"
                                 }
