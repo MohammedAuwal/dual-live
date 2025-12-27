@@ -34,8 +34,8 @@ fun FixtureListScreen(
     val completedCount = fixtures.count { f -> 
         matches.any { m -> m.homeTeamId == f.homeTeam.id && m.awayTeamId == f.awayTeam.id }
     }
-    val progress = if (totalFixtures > 0) completedCount.toFloat() / totalFixtures else 0f
-    val percentage = (progress * 100).toInt()
+    val progressValue = if (totalFixtures > 0) completedCount.toFloat() / totalFixtures else 0f
+    val percentage = (progressValue * 100).toInt()
 
     val filteredFixtures = remember(searchQuery, fixtures) {
         if (searchQuery.isBlank()) fixtures
@@ -50,11 +50,11 @@ fun FixtureListScreen(
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Tournament Schedule", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         
-        // Progress Section
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // FIXED: Removed the curly braces to pass progress as a Float
             LinearProgressIndicator(
-                progress = { progress },
+                progress = progressValue,
                 modifier = Modifier.weight(1f).height(8.dp),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
