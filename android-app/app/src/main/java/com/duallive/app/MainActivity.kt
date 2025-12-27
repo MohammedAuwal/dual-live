@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val db = AppDatabase.getDatabase(this)
@@ -178,11 +179,8 @@ class MainActivity : ComponentActivity() {
                                     db.leagueDao().insertLeague(
                                         League(name = kName, description = "Knockout phase", isHomeAndAway = false, type = LeagueType.CLASSIC)
                                     )
-                                    
-                                    // Bypassing the return ID issue by finding the league by name
                                     val allLeagues = db.leagueDao().getAllLeagues().first()
                                     val newLeague = allLeagues.find { it.name == kName }
-                                    
                                     newLeague?.let { league ->
                                         qualifiedTeams.forEach { team ->
                                             db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null))
