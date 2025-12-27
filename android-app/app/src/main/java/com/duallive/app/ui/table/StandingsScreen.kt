@@ -1,38 +1,42 @@
 package com.duallive.app.ui.table
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.duallive.app.data.entity.Standing
 import com.duallive.app.data.entity.Team
 
 @Composable
 fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
     val groupedTeams = teams.groupBy { it.groupName }
+    // Detect if we are in a UCL knockout stage by checking groupNames or if the title (via state) would imply it
+    val isKnockoutStage = groupedTeams.keys.all { it == null } && teams.isNotEmpty()
     val isUclMode = groupedTeams.keys.any { it != null }
 
-    // --- Cautious Stats Logic (Read-only) ---
     val totalGoals = standings.sumOf { it.goalsFor }
-    // Dividing by 2 because each goal is counted for both GF of one team and GA of another
     val totalMatches = standings.sumOf { it.matchesPlayed } / 2
     val topAttackTeamId = standings.maxByOrNull { it.goalsFor }?.teamId
     val topAttackName = teams.find { it.id == topAttackTeamId }?.name ?: "N/A"
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
-            text = if (isUclMode) "Tournament Standings" else "League Table", 
+            text = if (isUclMode) "Tournament Standings" else if (isKnockoutStage) "Knockout Progress" else "League Table", 
             style = MaterialTheme.typography.headlineMedium, 
             fontWeight = FontWeight.Bold
         )
         
-        // --- Cautious Stats Row ---
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -48,6 +52,28 @@ fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
             Column {
                 Text("Best Attack", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                 Text(topAttackName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // --- UCL GOLD CUP BRACKET HEADER ---
+        if (isKnockoutStage) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFD4AF37)), // Gold Color
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🏆", fontSize = 32.sp)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("ROAD TO THE FINAL", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                        Text("Finish all matches to proceed", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                    }
+                }
             }
         }
 
