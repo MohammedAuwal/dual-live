@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                 MainScope().launch {
                                     val newId: Long = db.leagueDao().insertLeague(
                                         League(
-                                            name = "${selectedLeague?.name ?: \"\"} - Knockouts",
+                                            name = "${selectedLeague?.name ?: ""} - Knockouts",
                                             description = "Knockout phase",
                                             isHomeAndAway = false,
                                             type = LeagueType.CLASSIC
