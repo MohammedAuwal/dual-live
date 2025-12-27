@@ -87,7 +87,7 @@ fun TeamListScreen(
                                         onClick = { teamToEdit = team },
                                         modifier = Modifier.align(Alignment.TopEnd).size(24.dp)
                                     ) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Edit", scaleShape = null, tint = MaterialTheme.colorScheme.primary)
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
                                     }
                                 }
                                 if (team.groupName != null) {

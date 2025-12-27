@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Stars
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,15 +25,13 @@ fun KnockoutSelectionScreen(
     onBack: () -> Unit,
     onConfirmKnockouts: (List<Team>) -> Unit
 ) {
-    // Logic: Auto-select Top 2 from each group
     val suggestedTeams = remember(standings) {
         val winners = mutableListOf<Team>()
-        val groupedStandings = standings.groupBy { teamId -> 
-            teams.find { it.id == teamId.teamId }?.groupName 
+        val groupedStandings = standings.groupBy { s -> 
+            teams.find { it.id == s.teamId }?.groupName 
         }
         
         groupedStandings.forEach { (_, groupStandings) ->
-            // Standings are already sorted by Points -> GD -> GF in TableCalculator
             val topTwoIds = groupStandings.take(2).map { it.teamId }
             winners.addAll(teams.filter { it.id in topTwoIds })
         }
@@ -51,21 +49,18 @@ fun KnockoutSelectionScreen(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
             ) {
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Stars, contentDescription = null)
+                    Icon(Icons.Default.Star, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Top 2 from each group are auto-selected. Adjust if needed.", style = MaterialTheme.typography.bodySmall)
+                    Text("Top 2 from each group are auto-selected.", style = MaterialTheme.typography.bodySmall)
                 }
             }
             
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(teams.sortedBy { it.groupName }) { team ->
                     val isSelected = selectedTeams.contains(team)
-                    val isAutoSuggested = suggestedTeams.contains(team)
                     
                     ListItem(
-                        headlineContent = { 
-                            Text(team.name, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) 
-                        },
+                        headlineContent = { Text(team.name) },
                         supportingContent = { Text(team.groupName ?: "No Group") },
                         trailingContent = {
                             Checkbox(
@@ -77,10 +72,7 @@ fun KnockoutSelectionScreen(
                         },
                         modifier = Modifier.clickable {
                             if (isSelected) selectedTeams.remove(team) else selectedTeams.add(team)
-                        },
-                        colors = if (isAutoSuggested && isSelected) 
-                            ListItemDefaults.colors(containerColor = Color.Green.copy(alpha = 0.05f))
-                            else ListItemDefaults.colors()
+                        }
                     )
                 }
             }
