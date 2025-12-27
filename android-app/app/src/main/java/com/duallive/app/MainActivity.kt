@@ -71,7 +71,6 @@ class MainActivity : ComponentActivity() {
                             leagues = leagues,
                             onLeagueClick = { league -> 
                                 selectedLeague = league
-                                // Reset fixtures when entering a league normally
                                 generatedFixtures = emptyList()
                                 currentScreen = "team_list" 
                             },
@@ -181,12 +180,19 @@ class MainActivity : ComponentActivity() {
                             Scaffold(
                                 bottomBar = { 
                                     Column {
-                                        if (selectedLeague?.type == LeagueType.UCL) {
+                                        // SMART BUTTON: Checks if we are in UCL or a Knockout round
+                                        if (selectedLeague?.type == LeagueType.UCL || currentStageLabel.isNotEmpty()) {
+                                            val buttonText = when {
+                                                teams.size == 8 && currentStageLabel.contains("Quarter") -> "Proceed to Semi-Finals"
+                                                teams.size == 4 && currentStageLabel.contains("Semi") -> "Proceed to Final"
+                                                else -> "Proceed to Knockouts"
+                                            }
+                                            
                                             Button(
                                                 onClick = { currentScreen = "knockout_select" },
                                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                                            ) { Text("Proceed to Knockouts") }
+                                            ) { Text(buttonText) }
                                         }
                                         Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Back") }
                                     }
@@ -195,40 +201,51 @@ class MainActivity : ComponentActivity() {
                                 Box(modifier = Modifier.padding(p)) { StandingsScreen(teams = teams, standings = standings) }
                             }
                         }
-                        "knockout_select" -> KnockoutSelectionScreen(
-                            teams = teams,
-                            standings = standings,
-                            onBack = { currentScreen = "standings" },
-                            onConfirmKnockouts = { qualifiedTeams, stageLabel ->
-                                MainScope().launch {
-                                    val kName = "${selectedLeague?.name ?: ""} - $stageLabel"
-                                    db.leagueDao().insertLeague(
-                                        League(name = kName, description = "UCL Stage", isHomeAndAway = false, type = LeagueType.CLASSIC)
-                                    )
-                                    
-                                    val allLeagues = db.leagueDao().getAllLeagues().first()
-                                    val newLeague = allLeagues.find { it.name == kName }
-                                    
-                                    newLeague?.let { league ->
-                                        qualifiedTeams.forEach { team ->
-                                            db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null))
+                        "knockout_select" -> {
+                            // AUTOMATIC WINNER PICKER
+                            val winningTeams = remember(matches, teams) {
+                                if (currentStageLabel.isEmpty()) teams // Group stage mode
+                                else {
+                                    // Look at matches and find teams that won
+                                    val winners = mutableListOf<Team>()
+                                    matches.forEach { m ->
+                                        if (m.homeScore > m.awayScore) {
+                                            teams.find { it.id == m.homeTeamId }?.let { winners.add(it) }
+                                        } else if (m.awayScore > m.homeScore) {
+                                            teams.find { it.id == m.awayTeamId }?.let { winners.add(it) }
                                         }
-                                        
-                                        // RELOAD newly created league data
-                                        val newTeams = db.teamDao().getTeamsByLeague(league.id).first()
-                                        
-                                        // 1. SET THE FIXTURES
-                                        generatedFixtures = FixtureGenerator.generateKnockoutDraw(newTeams, stageLabel)
-                                        // 2. SET THE STAGE LABEL
-                                        currentStageLabel = stageLabel
-                                        // 3. SET THE SELECTED LEAGUE
-                                        selectedLeague = league
                                     }
-                                    // 4. GO STRAIGHT TO FIXTURE LIST TO SEE THE DRAW
-                                    currentScreen = "fixture_list"
+                                    if (winners.isEmpty()) teams else winners
                                 }
                             }
-                        )
+
+                            KnockoutSelectionScreen(
+                                teams = winningTeams,
+                                standings = standings,
+                                onBack = { currentScreen = "standings" },
+                                onConfirmKnockouts = { qualifiedTeams, stageLabel ->
+                                    MainScope().launch {
+                                        val baseName = selectedLeague?.name?.substringBefore(" -") ?: ""
+                                        val kName = "$baseName - $stageLabel"
+                                        db.leagueDao().insertLeague(
+                                            League(name = kName, description = "UCL Stage", isHomeAndAway = false, type = LeagueType.CLASSIC)
+                                        )
+                                        val allLeagues = db.leagueDao().getAllLeagues().first()
+                                        val newLeague = allLeagues.find { it.name == kName }
+                                        newLeague?.let { league ->
+                                            qualifiedTeams.forEach { team ->
+                                                db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null))
+                                            }
+                                            val newTeams = db.teamDao().getTeamsByLeague(league.id).first()
+                                            generatedFixtures = FixtureGenerator.generateKnockoutDraw(newTeams, stageLabel)
+                                            currentStageLabel = stageLabel
+                                            selectedLeague = league
+                                        }
+                                        currentScreen = "fixture_list"
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
