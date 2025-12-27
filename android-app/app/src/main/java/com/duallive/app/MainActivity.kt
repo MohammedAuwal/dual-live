@@ -173,16 +173,19 @@ class MainActivity : ComponentActivity() {
                             onBack = { currentScreen = "standings" },
                             onConfirmKnockouts = { qualifiedTeams ->
                                 MainScope().launch {
-                                    val newLeagueId = db.leagueDao().insertLeague(
+                                    val newId: Long = db.leagueDao().insertLeague(
                                         League(
-                                            name = "${selectedLeague?.name} - Knockouts",
-                                            description = "Knockout phase for ${selectedLeague?.name}",
+                                            name = "${selectedLeague?.name ?: \"\"} - Knockouts",
+                                            description = "Knockout phase",
                                             isHomeAndAway = false,
                                             type = LeagueType.CLASSIC
                                         )
                                     )
-                                    qualifiedTeams.forEach { 
-                                        db.teamDao().insertTeam(Team(leagueId = newLeagueId.toInt(), name = it.name, groupName = null))
+                                    val leagueIdInt = newId.toInt()
+                                    qualifiedTeams.forEach { team ->
+                                        db.teamDao().insertTeam(
+                                            Team(leagueId = leagueIdInt, name = team.name, groupName = null)
+                                        )
                                     }
                                     currentScreen = "league_list"
                                 }
