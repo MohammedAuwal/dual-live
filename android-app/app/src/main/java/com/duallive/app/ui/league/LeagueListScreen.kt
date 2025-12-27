@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.League
+import com.duallive.app.data.entity.LeagueType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +57,22 @@ fun LeagueListScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = league.name, style = MaterialTheme.typography.titleLarge)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = league.name, style = MaterialTheme.typography.titleLarge)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    
+                                    // Safety Tag for League Type
+                                    SuggestionChip(
+                                        onClick = { },
+                                        label = { 
+                                            Text(
+                                                text = if (league.type == LeagueType.UCL) "UCL" else "Classic",
+                                                style = MaterialTheme.typography.labelSmall
+                                            ) 
+                                        },
+                                        enabled = false
+                                    )
+                                }
                                 league.description?.let {
                                     Text(text = it, style = MaterialTheme.typography.bodyMedium)
                                 }
@@ -65,7 +81,7 @@ fun LeagueListScreen(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Delete League",
-                                    tint = Color.Red
+                                    tint = MaterialTheme.colorScheme.error
                                 )
                             }
                         }
@@ -75,7 +91,6 @@ fun LeagueListScreen(
         }
     }
 
-    // Confirmation Dialog
     if (leagueToDelete != null) {
         AlertDialog(
             onDismissRequest = { leagueToDelete = null },
@@ -85,7 +100,7 @@ fun LeagueListScreen(
                 TextButton(onClick = { 
                     onDeleteLeague(leagueToDelete!!)
                     leagueToDelete = null 
-                }) { Text("DELETE", color = Color.Red) }
+                }) { Text("DELETE", color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
                 TextButton(onClick = { leagueToDelete = null }) { Text("CANCEL") }

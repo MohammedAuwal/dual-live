@@ -28,7 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "dual_live_db"
                 )
-                .fallbackToDestructiveMigration() // This handles the schema change by clearing old data
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance

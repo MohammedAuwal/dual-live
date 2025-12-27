@@ -15,50 +15,109 @@ import com.duallive.app.data.entity.Team
 
 @Composable
 fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
+    val groupedTeams = teams.groupBy { it.groupName }
+    val isUclMode = groupedTeams.keys.any { it != null }
+
+    // --- Cautious Stats Logic (Read-only) ---
+    val totalGoals = standings.sumOf { it.goalsFor }
+    // Dividing by 2 because each goal is counted for both GF of one team and GA of another
+    val totalMatches = standings.sumOf { it.matchesPlayed } / 2
+    val topAttackTeamId = standings.maxByOrNull { it.goalsFor }?.teamId
+    val topAttackName = teams.find { it.id == topAttackTeamId }?.name ?: "N/A"
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("League Table", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        Text(
+            text = if (isUclMode) "Tournament Standings" else "League Table", 
+            style = MaterialTheme.typography.headlineMedium, 
+            fontWeight = FontWeight.Bold
+        )
+        
+        // --- Cautious Stats Row ---
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("Played", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                Text("$totalMatches", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            }
+            Column {
+                Text("Total Goals", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                Text("$totalGoals", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            }
+            Column {
+                Text("Best Attack", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                Text(topAttackName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Divider(modifier = Modifier.padding(vertical = 4.dp))
         Text("Tie-breaker: GD > GF", style = MaterialTheme.typography.bodySmall)
         
         Spacer(modifier = Modifier.height(16.dp))
-        
-        val scrollState = rememberScrollState()
-        
-        Column(modifier = Modifier.horizontalScroll(scrollState)) {
-            // Header Row
-            Row(modifier = Modifier.padding(8.dp)) {
-                Text("#", modifier = Modifier.width(30.dp), fontWeight = FontWeight.Bold)
-                Text("Team", modifier = Modifier.width(100.dp), fontWeight = FontWeight.Bold)
-                Text("P", modifier = Modifier.width(30.dp), fontWeight = FontWeight.Bold)
-                Text("W", modifier = Modifier.width(30.dp))
-                Text("D", modifier = Modifier.width(30.dp))
-                Text("L", modifier = Modifier.width(30.dp))
-                Text("GF", modifier = Modifier.width(35.dp))
-                Text("GA", modifier = Modifier.width(35.dp))
-                Text("GD", modifier = Modifier.width(40.dp), fontWeight = FontWeight.Bold)
-                Text("Pts", modifier = Modifier.width(45.dp), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
-            }
-            Divider()
-            
-            LazyColumn {
-                itemsIndexed(standings) { index, standing ->
-                    val teamName = teams.find { it.id == standing.teamId }?.name ?: "Unknown"
-                    val gd = standing.goalsFor - standing.goalsAgainst
-                    
-                    Row(modifier = Modifier.padding(8.dp)) {
-                        Text("${index + 1}", modifier = Modifier.width(30.dp))
-                        Text(teamName, modifier = Modifier.width(100.dp), maxLines = 1)
-                        Text("${standing.matchesPlayed}", modifier = Modifier.width(30.dp))
-                        Text("${standing.wins}", modifier = Modifier.width(30.dp))
-                        Text("${standing.draws}", modifier = Modifier.width(30.dp))
-                        Text("${standing.losses}", modifier = Modifier.width(30.dp))
-                        Text("${standing.goalsFor}", modifier = Modifier.width(35.dp))
-                        Text("${standing.goalsAgainst}", modifier = Modifier.width(35.dp))
-                        Text("${if (gd > 0) "+" else ""}$gd", modifier = Modifier.width(40.dp), fontWeight = FontWeight.Bold)
-                        Text("${standing.points}", modifier = Modifier.width(45.dp), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            if (isUclMode) {
+                groupedTeams.forEach { (groupName, groupTeams) ->
+                    item {
+                        Text(
+                            text = groupName ?: "Unassigned",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        val groupTeamIds = groupTeams.map { it.id }
+                        val groupStandings = standings.filter { it.teamId in groupTeamIds }
+                        
+                        StandingTable(teams = groupTeams, standings = groupStandings)
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
-                    Divider(thickness = 0.5.dp)
+                }
+            } else {
+                item {
+                    StandingTable(teams = teams, standings = standings)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun StandingTable(teams: List<Team>, standings: List<Standing>) {
+    val scrollState = rememberScrollState()
+    
+    Column(modifier = Modifier.horizontalScroll(scrollState)) {
+        Row(modifier = Modifier.padding(8.dp)) {
+            Text("#", modifier = Modifier.width(30.dp), fontWeight = FontWeight.Bold)
+            Text("Team", modifier = Modifier.width(100.dp), fontWeight = FontWeight.Bold)
+            Text("P", modifier = Modifier.width(30.dp), fontWeight = FontWeight.Bold)
+            Text("W", modifier = Modifier.width(30.dp))
+            Text("D", modifier = Modifier.width(30.dp))
+            Text("L", modifier = Modifier.width(30.dp))
+            Text("GF", modifier = Modifier.width(35.dp))
+            Text("GA", modifier = Modifier.width(35.dp))
+            Text("GD", modifier = Modifier.width(40.dp), fontWeight = FontWeight.Bold)
+            Text("Pts", modifier = Modifier.width(45.dp), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+        }
+        Divider()
+        
+        standings.forEachIndexed { index, standing ->
+            val teamName = teams.find { it.id == standing.teamId }?.name ?: "Unknown"
+            val gd = standing.goalsFor - standing.goalsAgainst
+            
+            Row(modifier = Modifier.padding(8.dp)) {
+                Text("${index + 1}", modifier = Modifier.width(30.dp))
+                Text(teamName, modifier = Modifier.width(100.dp), maxLines = 1)
+                Text("${standing.matchesPlayed}", modifier = Modifier.width(30.dp))
+                Text("${standing.wins}", modifier = Modifier.width(30.dp))
+                Text("${standing.draws}", modifier = Modifier.width(30.dp))
+                Text("${standing.losses}", modifier = Modifier.width(30.dp))
+                Text("${standing.goalsFor}", modifier = Modifier.width(35.dp))
+                Text("${standing.goalsAgainst}", modifier = Modifier.width(35.dp))
+                Text("${if (gd > 0) "+" else ""}$gd", modifier = Modifier.width(40.dp), fontWeight = FontWeight.Bold)
+                Text("${standing.points}", modifier = Modifier.width(45.dp), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+            Divider(thickness = 0.5.dp)
         }
     }
 }
