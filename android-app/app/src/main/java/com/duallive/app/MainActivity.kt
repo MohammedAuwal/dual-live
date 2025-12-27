@@ -10,6 +10,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.duallive.app.ui.league.*
 import com.duallive.app.ui.team.*
 import com.duallive.app.ui.table.StandingsScreen
@@ -31,6 +34,7 @@ class MainActivity : ComponentActivity() {
             var currentScreen by rememberSaveable { mutableStateOf("league_list") }
             var selectedLeague by remember { mutableStateOf<League?>(null) }
             var showAddTeamDialog by remember { mutableStateOf(false) }
+            var winnerName by remember { mutableStateOf<String?>(null) }
             
             var homeTeamForDisplay by remember { mutableStateOf<Team?>(null) }
             var awayTeamForDisplay by remember { mutableStateOf<Team?>(null) }
@@ -66,6 +70,27 @@ class MainActivity : ComponentActivity() {
 
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    // --- CHAMPION DIALOG ---
+                    winnerName?.let { name ->
+                        AlertDialog(
+                            onDismissRequest = { winnerName = null },
+                            title = { Text("🏆 CHAMPIONS LEAGUE WINNER 🏆", fontWeight = FontWeight.Bold) },
+                            text = { 
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                    Text(name, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("Congratulations! You are the champion.")
+                                }
+                            },
+                            confirmButton = {
+                                Button(onClick = { 
+                                    winnerName = null
+                                    currentScreen = "league_list" 
+                                }) { Text("Great!") }
+                            }
+                        )
+                    }
+
                     when (currentScreen) {
                         "league_list" -> LeagueListScreen(
                             leagues = leagues,
@@ -170,7 +195,13 @@ class MainActivity : ComponentActivity() {
                             onSaveAndClose = {
                                 MainScope().launch {
                                     db.matchDao().insertMatch(Match(leagueId = selectedLeague!!.id, homeTeamId = homeTeamForDisplay!!.id, awayTeamId = awayTeamForDisplay!!.id, homeScore = homeScore, awayScore = awayScore))
-                                    currentScreen = "match_history"
+                                    
+                                    // CHECK IF IT IS THE FINAL
+                                    if (currentStageLabel.contains("Final", ignoreCase = true)) {
+                                        winnerName = if (homeScore > awayScore) homeTeamForDisplay?.name else awayTeamForDisplay?.name
+                                    } else {
+                                        currentScreen = "match_history"
+                                    }
                                 }
                             },
                             onCancel = { currentScreen = "team_list" },
@@ -180,7 +211,6 @@ class MainActivity : ComponentActivity() {
                             Scaffold(
                                 bottomBar = { 
                                     Column {
-                                        // SMART BUTTON: Checks if we are in UCL or a Knockout round
                                         if (selectedLeague?.type == LeagueType.UCL || currentStageLabel.isNotEmpty()) {
                                             val buttonText = when {
                                                 teams.size == 8 && currentStageLabel.contains("Quarter") -> "Proceed to Semi-Finals"
@@ -202,11 +232,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         "knockout_select" -> {
-                            // AUTOMATIC WINNER PICKER
                             val winningTeams = remember(matches, teams) {
-                                if (currentStageLabel.isEmpty()) teams // Group stage mode
+                                if (currentStageLabel.isEmpty()) teams 
                                 else {
-                                    // Look at matches and find teams that won
                                     val winners = mutableListOf<Team>()
                                     matches.forEach { m ->
                                         if (m.homeScore > m.awayScore) {
