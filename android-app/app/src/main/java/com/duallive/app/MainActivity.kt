@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
             var homeScore by remember { mutableStateOf(0) }
             var awayScore by remember { mutableStateOf(0) }
             var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
+            var currentStageLabel by remember { mutableStateOf("") }
 
             BackHandler(enabled = currentScreen != "league_list") {
                 when (currentScreen) {
@@ -68,7 +69,12 @@ class MainActivity : ComponentActivity() {
                     when (currentScreen) {
                         "league_list" -> LeagueListScreen(
                             leagues = leagues,
-                            onLeagueClick = { league -> selectedLeague = league; currentScreen = "team_list" },
+                            onLeagueClick = { league -> 
+                                selectedLeague = league
+                                // Reset fixtures when entering a league normally
+                                generatedFixtures = emptyList()
+                                currentScreen = "team_list" 
+                            },
                             onDeleteLeague = { league -> MainScope().launch { db.leagueDao().deleteLeague(league) } },
                             onAddLeagueClick = { currentScreen = "create_league" }
                         )
@@ -87,6 +93,7 @@ class MainActivity : ComponentActivity() {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = { 
                                                 generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                                currentStageLabel = ""
                                                 currentScreen = "fixture_list"
                                             }) { Text("DRAW") }
                                             
@@ -123,11 +130,29 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
-                        "fixture_list" -> FixtureListScreen(fixtures = generatedFixtures, matches = matches, onMatchSelect = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" }, onBack = { currentScreen = "team_list" })
+                        "fixture_list" -> FixtureListScreen(
+                            fixtures = generatedFixtures, 
+                            matches = matches, 
+                            onMatchSelect = { h, a -> 
+                                homeTeamForDisplay = h
+                                awayTeamForDisplay = a
+                                homeScore = 0
+                                awayScore = 0
+                                currentScreen = "live_display" 
+                            }, 
+                            onBack = { currentScreen = "team_list" }
+                        )
                         "match_entry" -> MatchEntryScreen(
                             teams = teams, 
                             onBack = { currentScreen = "team_list" },
-                            onLaunchDisplay = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" }
+                            onLaunchDisplay = { h, a -> 
+                                homeTeamForDisplay = h
+                                awayTeamForDisplay = a
+                                homeScore = 0
+                                awayScore = 0
+                                currentStageLabel = ""
+                                currentScreen = "live_display" 
+                            }
                         )
                         "match_history" -> MatchHistoryScreen(
                             matches = matches,
@@ -149,7 +174,8 @@ class MainActivity : ComponentActivity() {
                                     currentScreen = "match_history"
                                 }
                             },
-                            onCancel = { currentScreen = "team_list" }
+                            onCancel = { currentScreen = "team_list" },
+                            stageLabel = currentStageLabel
                         )
                         "standings" -> {
                             Scaffold(
@@ -184,16 +210,22 @@ class MainActivity : ComponentActivity() {
                                     val newLeague = allLeagues.find { it.name == kName }
                                     
                                     newLeague?.let { league ->
-                                        // 1. Add teams to the new league
                                         qualifiedTeams.forEach { team ->
                                             db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null))
                                         }
                                         
-                                        // 2. Automatically set up the draw for the next screen
+                                        // RELOAD newly created league data
                                         val newTeams = db.teamDao().getTeamsByLeague(league.id).first()
+                                        
+                                        // 1. SET THE FIXTURES
                                         generatedFixtures = FixtureGenerator.generateKnockoutDraw(newTeams, stageLabel)
+                                        // 2. SET THE STAGE LABEL
+                                        currentStageLabel = stageLabel
+                                        // 3. SET THE SELECTED LEAGUE
+                                        selectedLeague = league
                                     }
-                                    currentScreen = "league_list"
+                                    // 4. GO STRAIGHT TO FIXTURE LIST TO SEE THE DRAW
+                                    currentScreen = "fixture_list"
                                 }
                             }
                         )
