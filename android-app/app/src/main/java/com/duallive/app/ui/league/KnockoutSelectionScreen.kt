@@ -5,14 +5,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Team
 import com.duallive.app.data.entity.Standing
@@ -23,7 +20,7 @@ fun KnockoutSelectionScreen(
     teams: List<Team>,
     standings: List<Standing>,
     onBack: () -> Unit,
-    onConfirmKnockouts: (List<Team>) -> Unit
+    onConfirmKnockouts: (List<Team>, String) -> Unit
 ) {
     val suggestedTeams = remember(standings) {
         val winners = mutableListOf<Team>()
@@ -32,16 +29,24 @@ fun KnockoutSelectionScreen(
         }
         
         groupedStandings.forEach { (_, groupStandings) ->
-            val topTwoIds = groupStandings.take(2).map { it.teamId }
+            val topTwoIds = groupStandings.sortedByDescending { it.points }.take(2).map { it.teamId }
             winners.addAll(teams.filter { it.id in topTwoIds })
         }
         winners
     }
 
     val selectedTeams = remember { mutableStateListOf<Team>().apply { addAll(suggestedTeams) } }
+    
+    // Automatically determine the stage name based on team count
+    val stageName = when (selectedTeams.size) {
+        8 -> "Quarter-Finals"
+        4 -> "Semi-Finals"
+        2 -> "Final"
+        else -> "Knockout Round"
+    }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Knockout Qualifiers") }) }
+        topBar = { TopAppBar(title = { Text("UCL Knockout Selection") }) }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
             Card(
@@ -51,7 +56,7 @@ fun KnockoutSelectionScreen(
                 Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Star, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Top 2 from each group are auto-selected.", style = MaterialTheme.typography.bodySmall)
+                    Text("Select teams for: $stageName", style = MaterialTheme.typography.titleSmall)
                 }
             }
             
@@ -78,12 +83,13 @@ fun KnockoutSelectionScreen(
             }
 
             Button(
-                onClick = { onConfirmKnockouts(selectedTeams.toList()) },
+                onClick = { onConfirmKnockouts(selectedTeams.toList(), stageName) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = selectedTeams.isNotEmpty()
+                enabled = selectedTeams.size % 2 == 0 && selectedTeams.isNotEmpty()
             ) {
-                Text("Create Knockout Phase (${selectedTeams.size} Teams)")
+                Text("Draw $stageName (${selectedTeams.size} Teams)")
             }
+            
             TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
                 Text("Cancel")
             }

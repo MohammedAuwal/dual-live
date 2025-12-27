@@ -2,20 +2,18 @@ package com.duallive.app.utils
 
 import com.duallive.app.data.entity.Team
 
-data class Fixture(val round: Int, val homeTeam: Team, val awayTeam: Team)
+data class Fixture(val round: Int, val homeTeam: Team, val awayTeam: Team, val label: String = "")
 
 object FixtureGenerator {
     fun generateRoundRobin(teams: List<Team>, homeAndAway: Boolean): List<Fixture> {
         if (teams.size < 2) return emptyList()
         
-        // Split teams by group. If Classic, everyone is in one "null" group.
         val groupedTeams = teams.groupBy { it.groupName }
         val allFixtures = mutableListOf<Fixture>()
 
         groupedTeams.forEach { (_, groupTeams) ->
             if (groupTeams.size < 2) return@forEach
 
-            // Your original Classic logic starts here
             val teamList = if (groupTeams.size % 2 != 0) {
                 groupTeams + Team(id = -1, leagueId = -1, name = "BYE")
             } else {
@@ -48,11 +46,27 @@ object FixtureGenerator {
                 }
                 groupFixtures.addAll(secondLeg)
             }
-            // Your original Classic logic ends here
             
             allFixtures.addAll(groupFixtures)
         }
-
         return allFixtures
+    }
+
+    // NEW: Specifically for UCL Knockout Stages
+    fun generateKnockoutDraw(teams: List<Team>, stageLabel: String): List<Fixture> {
+        val shuffled = teams.shuffled()
+        val fixtures = mutableListOf<Fixture>()
+        
+        for (i in 0 until shuffled.size - 1 step 2) {
+            fixtures.add(
+                Fixture(
+                    round = 99, // High number to distinguish from group rounds
+                    homeTeam = shuffled[i],
+                    awayTeam = shuffled[i+1],
+                    label = stageLabel
+                )
+            )
+        }
+        return fixtures
     }
 }

@@ -21,10 +21,12 @@ fun MatchDisplayScreen(
     onUpdateHome: (Int) -> Unit,
     onUpdateAway: (Int) -> Unit,
     onSaveAndClose: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    stageLabel: String = ""
 ) {
     var seconds by remember { mutableStateOf(0) }
     var isRunning by remember { mutableStateOf(false) }
+    val isFinal = stageLabel.contains("Final", ignoreCase = true)
 
     LaunchedEffect(isRunning) {
         while (isRunning) {
@@ -39,6 +41,11 @@ fun MatchDisplayScreen(
         modifier = Modifier.fillMaxSize().background(Color.Black).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        if (isFinal) {
+            Text("🏆 CHAMPIONS LEAGUE FINAL 🏆", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFD700)) // Gold color
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
         Text(timeText, fontSize = 70.sp, fontWeight = FontWeight.Bold, color = Color.White)
 
         Row(modifier = Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically) {

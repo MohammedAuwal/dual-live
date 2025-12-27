@@ -173,18 +173,25 @@ class MainActivity : ComponentActivity() {
                             teams = teams,
                             standings = standings,
                             onBack = { currentScreen = "standings" },
-                            onConfirmKnockouts = { qualifiedTeams ->
+                            onConfirmKnockouts = { qualifiedTeams, stageLabel ->
                                 MainScope().launch {
-                                    val kName = "${selectedLeague?.name ?: ""} - Knockouts"
+                                    val kName = "${selectedLeague?.name ?: ""} - $stageLabel"
                                     db.leagueDao().insertLeague(
-                                        League(name = kName, description = "Knockout phase", isHomeAndAway = false, type = LeagueType.CLASSIC)
+                                        League(name = kName, description = "UCL Stage", isHomeAndAway = false, type = LeagueType.CLASSIC)
                                     )
+                                    
                                     val allLeagues = db.leagueDao().getAllLeagues().first()
                                     val newLeague = allLeagues.find { it.name == kName }
+                                    
                                     newLeague?.let { league ->
+                                        // 1. Add teams to the new league
                                         qualifiedTeams.forEach { team ->
                                             db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null))
                                         }
+                                        
+                                        // 2. Automatically set up the draw for the next screen
+                                        val newTeams = db.teamDao().getTeamsByLeague(league.id).first()
+                                        generatedFixtures = FixtureGenerator.generateKnockoutDraw(newTeams, stageLabel)
                                     }
                                     currentScreen = "league_list"
                                 }
