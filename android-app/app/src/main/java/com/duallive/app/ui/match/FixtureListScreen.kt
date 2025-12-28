@@ -29,16 +29,9 @@ fun FixtureListScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     
-    // Helper function to check if a fixture is played (Checks ID first, then Name for UCL compatibility)
+    // Helper function to check if a fixture is played
     fun findMatchForFixture(fixture: Fixture): Match? {
         return matches.find { m ->
-            // Try ID match first (Classic League)
-            (m.homeTeamId == fixture.homeTeam.id && m.awayTeamId == fixture.awayTeam.id) ||
-            // Fallback to Name match (UCL Knockouts where IDs change)
-            (m.homeTeamId == 0L && m.awayTeamId == 0L) // This is just a safety catch
-        } ?: matches.find { m ->
-            // In UCL, matches are saved with the current league's IDs. 
-            // We just need to ensure the list of matches passed in belongs to the current selectedLeague.
             m.homeTeamId == fixture.homeTeam.id && m.awayTeamId == fixture.awayTeam.id
         }
     }
@@ -65,7 +58,7 @@ fun FixtureListScreen(
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             LinearProgressIndicator(
-                progress = { progressValue },
+                progress = progressValue,
                 modifier = Modifier.weight(1f).height(8.dp),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
