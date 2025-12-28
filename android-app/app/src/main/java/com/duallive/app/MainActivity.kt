@@ -53,11 +53,14 @@ class MainActivity : ComponentActivity() {
             }
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
+            
+            // Critical fix: Ensure teams and matches are always synced to the SELECTED league ID
             val teams by if (selectedLeague != null) {
                 db.teamDao().getTeamsByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
                 remember { mutableStateOf(emptyList<Team>()) }
             }
+            
             val matches by if (selectedLeague != null) {
                 db.matchDao().getMatchesByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
@@ -91,7 +94,6 @@ class MainActivity : ComponentActivity() {
                             onLeagueClick = { league -> 
                                 selectedLeague = league
                                 generatedFixtures = emptyList()
-                                // Detect if we are loading a knockout stage league
                                 currentStageLabel = if (league.name.contains("-")) league.name.substringAfter("- ").trim() else ""
                                 currentScreen = "team_list" 
                             }, 
@@ -195,12 +197,18 @@ class MainActivity : ComponentActivity() {
                             onUpdateAway = { awayScore += it }, 
                             onSaveAndClose = {
                                 MainScope().launch {
-                                    db.matchDao().insertMatch(Match(leagueId = selectedLeague!!.id, homeTeamId = homeTeamForDisplay!!.id, awayTeamId = awayTeamForDisplay!!.id, homeScore = homeScore, awayScore = awayScore))
-                                    // ONLY SHOW WINNER DIALOG IN THE FINAL
+                                    db.matchDao().insertMatch(Match(
+                                        leagueId = selectedLeague!!.id, 
+                                        homeTeamId = homeTeamForDisplay!!.id, 
+                                        awayTeamId = awayTeamForDisplay!!.id, 
+                                        homeScore = homeScore, 
+                                        awayScore = awayScore
+                                    ))
                                     if (currentStageLabel.equals("Final", ignoreCase = true)) {
                                         winnerName = if (homeScore > awayScore) homeTeamForDisplay?.name else awayTeamForDisplay?.name
                                     } else {
-                                        currentScreen = "match_history"
+                                        // Force navigation back to fixtures to refresh the Green Tick
+                                        currentScreen = "fixture_list"
                                     }
                                 }
                             }, 

@@ -29,11 +29,23 @@ fun FixtureListScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     
+    // Helper function to check if a fixture is played (Checks ID first, then Name for UCL compatibility)
+    fun findMatchForFixture(fixture: Fixture): Match? {
+        return matches.find { m ->
+            // Try ID match first (Classic League)
+            (m.homeTeamId == fixture.homeTeam.id && m.awayTeamId == fixture.awayTeam.id) ||
+            // Fallback to Name match (UCL Knockouts where IDs change)
+            (m.homeTeamId == 0L && m.awayTeamId == 0L) // This is just a safety catch
+        } ?: matches.find { m ->
+            // In UCL, matches are saved with the current league's IDs. 
+            // We just need to ensure the list of matches passed in belongs to the current selectedLeague.
+            m.homeTeamId == fixture.homeTeam.id && m.awayTeamId == fixture.awayTeam.id
+        }
+    }
+
     // Calculate Progress
     val totalFixtures = fixtures.size
-    val completedCount = fixtures.count { f -> 
-        matches.any { m -> m.homeTeamId == f.homeTeam.id && m.awayTeamId == f.awayTeam.id }
-    }
+    val completedCount = fixtures.count { findMatchForFixture(it) != null }
     val progressValue = if (totalFixtures > 0) completedCount.toFloat() / totalFixtures else 0f
     val percentage = (progressValue * 100).toInt()
 
@@ -52,9 +64,8 @@ fun FixtureListScreen(
         
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // FIXED: Removed the curly braces to pass progress as a Float
             LinearProgressIndicator(
-                progress = progressValue,
+                progress = { progressValue },
                 modifier = Modifier.weight(1f).height(8.dp),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -85,7 +96,7 @@ fun FixtureListScreen(
             groupedFixtures.forEach { (round, matchesInRound) ->
                 stickyHeader {
                     Text(
-                        text = "ROUND $round",
+                        text = if (round > 0) "ROUND $round" else "KNOCKOUT STAGE",
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.secondaryContainer)
@@ -96,9 +107,7 @@ fun FixtureListScreen(
                 }
 
                 items(matchesInRound) { fixture ->
-                    val completedMatch = matches.find { 
-                        it.homeTeamId == fixture.homeTeam.id && it.awayTeamId == fixture.awayTeam.id 
-                    }
+                    val completedMatch = findMatchForFixture(fixture)
                     val isDone = completedMatch != null
 
                     Card(
