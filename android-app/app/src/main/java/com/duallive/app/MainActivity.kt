@@ -76,7 +76,11 @@ class MainActivity : ComponentActivity() {
                             title = { Text("🏆 CHAMPION 🏆", fontWeight = FontWeight.Bold) },
                             text = { Text("$name has won the competition!") },
                             confirmButton = {
-                                Button(onClick = { winnerName = null; currentScreen = "league_list" }) { Text("OK") }
+                                Button(onClick = { 
+                                    winnerName = null
+                                    currentStageLabel = ""
+                                    currentScreen = "league_list" 
+                                }) { Text("OK") }
                             }
                         )
                     }
@@ -104,8 +108,15 @@ class MainActivity : ComponentActivity() {
                                     BottomAppBar {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = { 
-                                                generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
-                                                currentStageLabel = ""
+                                                generatedFixtures = if (selectedLeague?.type == LeagueType.CLASSIC) {
+                                                    FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                                } else {
+                                                    if (currentStageLabel.isEmpty()) {
+                                                        FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                                    } else {
+                                                        FixtureGenerator.generateKnockoutDraw(teams, currentStageLabel)
+                                                    }
+                                                }
                                                 currentScreen = "fixture_list"
                                             }) { Text("DRAW") }
                                             
@@ -118,7 +129,7 @@ class MainActivity : ComponentActivity() {
                             ) { padding ->
                                 Box(modifier = Modifier.padding(padding)) {
                                     TeamListScreen(
-                                        leagueName = selectedLeague?.name ?: "", 
+                                        leagueName = if (currentStageLabel.isEmpty()) selectedLeague?.name ?: "" else currentStageLabel, 
                                         teams = teams, 
                                         isUcl = selectedLeague?.type == LeagueType.UCL, 
                                         onBack = { currentScreen = "league_list" }, 
@@ -146,33 +157,27 @@ class MainActivity : ComponentActivity() {
                             onMatchSelect = { h, a -> 
                                 homeTeamForDisplay = h
                                 awayTeamForDisplay = a
-                                homeScore = 0
-                                awayScore = 0
                                 currentScreen = "live_display" 
                             }, 
                             onBack = { currentScreen = "team_list" }
-                        )
-                        "match_entry" -> MatchEntryScreen(
-                            teams = teams, 
-                            onBack = { currentScreen = "team_list" },
-                            onLaunchDisplay = { h, a -> 
-                                homeTeamForDisplay = h
-                                awayTeamForDisplay = a
-                                homeScore = 0
-                                awayScore = 0
-                                currentScreen = "live_display" 
-                            }
                         )
                         "standings" -> {
                             Scaffold(
                                 bottomBar = { 
                                     Column {
                                         if (selectedLeague?.type == LeagueType.UCL) {
+                                            val nextLabel = when {
+                                                currentStageLabel.isEmpty() -> "Proceed to Quarter-Finals"
+                                                currentStageLabel.contains("Quarter") -> "Proceed to Semi-Finals"
+                                                currentStageLabel.contains("Semi") -> "Proceed to Final"
+                                                else -> "Finish Tournament"
+                                            }
+                                            
                                             Button(
                                                 onClick = { currentScreen = "knockout_select" },
                                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                                            ) { Text("Proceed to Knockouts") }
+                                            ) { Text(nextLabel) }
                                         }
                                         Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Back") }
                                     }
@@ -181,27 +186,20 @@ class MainActivity : ComponentActivity() {
                                 Box(modifier = Modifier.padding(p)) { StandingsScreen(teams = teams, standings = standings) }
                             }
                         }
-                        "match_history" -> MatchHistoryScreen(
-                            matches = matches,
-                            teams = teams,
-                            onDeleteMatch = { match -> MainScope().launch { db.matchDao().deleteMatch(match) } }, 
-                            onUpdateMatch = { updatedMatch -> MainScope().launch { db.matchDao().insertMatch(updatedMatch) } },
-                            onBack = { currentScreen = "team_list" }
-                        )
                         "live_display" -> MatchDisplayScreen(
                             homeName = homeTeamForDisplay?.name ?: "",
                             awayName = awayTeamForDisplay?.name ?: "",
-                            homeScore = homeScore,
-                            awayScore = awayScore,
-                            onUpdateHome = { homeScore += it },
-                            onUpdateAway = { awayScore += it },
-                            onSaveAndClose = {
+                            onSaveAndClose = { hS, aS ->
                                 MainScope().launch {
-                                    db.matchDao().insertMatch(Match(leagueId = selectedLeague!!.id, homeTeamId = homeTeamForDisplay!!.id, awayTeamId = awayTeamForDisplay!!.id, homeScore = homeScore, awayScore = awayScore))
-                                    currentScreen = "match_history"
+                                    db.matchDao().insertMatch(Match(leagueId = selectedLeague!!.id, homeTeamId = homeTeamForDisplay!!.id, awayTeamId = awayTeamForDisplay!!.id, homeScore = hS, awayScore = aS))
+                                    if (currentStageLabel.contains("Final")) {
+                                        winnerName = if (hS > aS) homeTeamForDisplay?.name else awayTeamForDisplay?.name
+                                    } else {
+                                        currentScreen = "match_history"
+                                    }
                                 }
                             },
-                            onCancel = { currentScreen = "team_list" }
+                            onCancel = { currentScreen = "fixture_list" }
                         )
                         "knockout_select" -> KnockoutSelectionScreen(
                             teams = teams,
@@ -211,7 +209,7 @@ class MainActivity : ComponentActivity() {
                                 MainScope().launch {
                                     val baseName = selectedLeague?.name?.substringBefore(" -") ?: ""
                                     val kName = "$baseName - $stageLabel"
-                                    db.leagueDao().insertLeague(League(name = kName, description = "UCL Stage", isHomeAndAway = false, type = LeagueType.CLASSIC))
+                                    db.leagueDao().insertLeague(League(name = kName, description = "UCL Stage", type = LeagueType.UCL))
                                     val allLeagues = db.leagueDao().getAllLeagues().first()
                                     val newLeague = allLeagues.find { it.name == kName }
                                     newLeague?.let { league ->
@@ -223,6 +221,21 @@ class MainActivity : ComponentActivity() {
                                     }
                                     currentScreen = "fixture_list"
                                 }
+                            }
+                        )
+                        "match_history" -> MatchHistoryScreen(
+                            matches = matches,
+                            teams = teams,
+                            onDeleteMatch = { m -> MainScope().launch { db.matchDao().deleteMatch(m) } },
+                            onBack = { currentScreen = "team_list" }
+                        )
+                        "match_entry" -> MatchEntryScreen(
+                            teams = teams,
+                            onBack = { currentScreen = "team_list" },
+                            onLaunchDisplay = { h, a -> 
+                                homeTeamForDisplay = h
+                                awayTeamForDisplay = a
+                                currentScreen = "live_display"
                             }
                         )
                     }
