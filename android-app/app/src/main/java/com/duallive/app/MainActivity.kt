@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.first
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedIdentifier)
+        super.onCreate(savedInstanceState)
         val db = AppDatabase.getDatabase(this)
 
         setContent {
