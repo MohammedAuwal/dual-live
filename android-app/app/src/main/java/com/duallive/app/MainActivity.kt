@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.first
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super.onCreate(savedIdentifier)
         val db = AppDatabase.getDatabase(this)
 
         setContent {
@@ -73,18 +73,10 @@ class MainActivity : ComponentActivity() {
                     winnerName?.let { name ->
                         AlertDialog(
                             onDismissRequest = { winnerName = null },
-                            title = { Text("🏆 TOURNAMENT CHAMPION 🏆", fontWeight = FontWeight.Bold) },
-                            text = { 
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                                    Text(name, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                                    Text("Has won the Trophy!", modifier = Modifier.padding(top = 8.dp))
-                                }
-                            },
+                            title = { Text("🏆 CHAMPION 🏆", fontWeight = FontWeight.Bold) },
+                            text = { Text("$name has won the competition!") },
                             confirmButton = {
-                                Button(onClick = { 
-                                    winnerName = null
-                                    currentScreen = "league_list" 
-                                }) { Text("Back to Home") }
+                                Button(onClick = { winnerName = null; currentScreen = "league_list" }) { Text("OK") }
                             }
                         )
                     }
@@ -102,9 +94,7 @@ class MainActivity : ComponentActivity() {
                         )
                         "create_league" -> CreateLeagueScreen(onSave = { name, desc, homeAway, leagueType ->
                             MainScope().launch {
-                                db.leagueDao().insertLeague(
-                                    League(name = name, description = desc, isHomeAndAway = homeAway, type = leagueType)
-                                )
+                                db.leagueDao().insertLeague(League(name = name, description = desc, isHomeAndAway = homeAway, type = leagueType))
                                 currentScreen = "league_list"
                             }
                         })
@@ -114,16 +104,12 @@ class MainActivity : ComponentActivity() {
                                     BottomAppBar {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = { 
-                                                // CAUTIOUS: Only generate Round Robin for Classic League
-                                                if (selectedLeague?.type == LeagueType.CLASSIC) {
-                                                    generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
-                                                    currentStageLabel = ""
-                                                    currentScreen = "fixture_list"
-                                                } else {
-                                                    // For UCL, we use the Step-by-Step logic in the Table/Standings
-                                                    currentScreen = "standings"
-                                                }
-                                            }) { Text(if (selectedLeague?.type == LeagueType.UCL) "TOURNAMENT" else "DRAW") }
+                                                generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                                currentStageLabel = ""
+                                                currentScreen = "fixture_list"
+                                            }) { Text("DRAW") }
+                                            
+                                            TextButton(onClick = { currentScreen = "match_entry" }) { Text("MANUAL") }
                                             TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS") }
                                             TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
                                         }
@@ -141,6 +127,18 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                            if (showAddTeamDialog) {
+                                AddTeamScreen(
+                                    leagueType = selectedLeague?.type ?: LeagueType.CLASSIC,
+                                    onSave = { names, group -> 
+                                        MainScope().launch { 
+                                            names.forEach { db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = it, groupName = group)) }
+                                            showAddTeamDialog = false 
+                                        } 
+                                    }, 
+                                    onCancel = { showAddTeamDialog = false }
+                                )
+                            }
                         }
                         "fixture_list" -> FixtureListScreen(
                             fixtures = generatedFixtures, 
@@ -154,6 +152,42 @@ class MainActivity : ComponentActivity() {
                             }, 
                             onBack = { currentScreen = "team_list" }
                         )
+                        "match_entry" -> MatchEntryScreen(
+                            teams = teams, 
+                            onBack = { currentScreen = "team_list" },
+                            onLaunchDisplay = { h, a -> 
+                                homeTeamForDisplay = h
+                                awayTeamForDisplay = a
+                                homeScore = 0
+                                awayScore = 0
+                                currentScreen = "live_display" 
+                            }
+                        )
+                        "standings" -> {
+                            Scaffold(
+                                bottomBar = { 
+                                    Column {
+                                        if (selectedLeague?.type == LeagueType.UCL) {
+                                            Button(
+                                                onClick = { currentScreen = "knockout_select" },
+                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                                            ) { Text("Proceed to Knockouts") }
+                                        }
+                                        Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Back") }
+                                    }
+                                }
+                            ) { p ->
+                                Box(modifier = Modifier.padding(p)) { StandingsScreen(teams = teams, standings = standings) }
+                            }
+                        }
+                        "match_history" -> MatchHistoryScreen(
+                            matches = matches,
+                            teams = teams,
+                            onDeleteMatch = { match -> MainScope().launch { db.matchDao().deleteMatch(match) } }, 
+                            onUpdateMatch = { updatedMatch -> MainScope().launch { db.matchDao().insertMatch(updatedMatch) } },
+                            onBack = { currentScreen = "team_list" }
+                        )
                         "live_display" -> MatchDisplayScreen(
                             homeName = homeTeamForDisplay?.name ?: "",
                             awayName = awayTeamForDisplay?.name ?: "",
@@ -164,52 +198,11 @@ class MainActivity : ComponentActivity() {
                             onSaveAndClose = {
                                 MainScope().launch {
                                     db.matchDao().insertMatch(Match(leagueId = selectedLeague!!.id, homeTeamId = homeTeamForDisplay!!.id, awayTeamId = awayTeamForDisplay!!.id, homeScore = homeScore, awayScore = awayScore))
-                                    if (currentStageLabel.contains("Final", ignoreCase = true)) {
-                                        winnerName = if (homeScore > awayScore) homeTeamForDisplay?.name else awayTeamForDisplay?.name
-                                    } else {
-                                        currentScreen = "match_history"
-                                    }
+                                    currentScreen = "match_history"
                                 }
                             },
-                            onCancel = { currentScreen = "team_list" },
-                            stageLabel = currentStageLabel
+                            onCancel = { currentScreen = "team_list" }
                         )
-                        "standings" -> {
-                            Scaffold(
-                                bottomBar = { 
-                                    Column {
-                                        // UCL Step-by-Step Transition Button
-                                        if (selectedLeague?.type == LeagueType.UCL) {
-                                            val isReadyForNext = if (generatedFixtures.isNotEmpty()) {
-                                                matches.size >= generatedFixtures.size
-                                            } else {
-                                                // Group Stage completion check
-                                                standings.isNotEmpty() && standings.all { it.matchesPlayed > 0 }
-                                            }
-
-                                            if (isReadyForNext) {
-                                                val nextLabel = when {
-                                                    currentStageLabel.isEmpty() -> "Proceed to Quarter-Finals"
-                                                    currentStageLabel.contains("Quarter") -> "Proceed to Semi-Finals"
-                                                    currentStageLabel.contains("Semi") -> "Proceed to Final"
-                                                    else -> ""
-                                                }
-                                                if (nextLabel.isNotEmpty()) {
-                                                    Button(
-                                                        onClick = { currentScreen = "knockout_select" },
-                                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                                                    ) { Text(nextLabel) }
-                                                }
-                                            }
-                                        }
-                                        Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Back") }
-                                    }
-                                }
-                            ) { p ->
-                                Box(modifier = Modifier.padding(p)) { StandingsScreen(teams = teams, standings = standings) }
-                            }
-                        }
                         "knockout_select" -> KnockoutSelectionScreen(
                             teams = teams,
                             standings = standings,
@@ -218,21 +211,12 @@ class MainActivity : ComponentActivity() {
                                 MainScope().launch {
                                     val baseName = selectedLeague?.name?.substringBefore(" -") ?: ""
                                     val kName = "$baseName - $stageLabel"
-                                    
-                                    // CAUTIOUS: Force the LeagueType to UCL so it doesn't break into Classic mode
-                                    db.leagueDao().insertLeague(
-                                        League(name = kName, description = "UCL Stage", isHomeAndAway = false, type = LeagueType.UCL)
-                                    )
-                                    
+                                    db.leagueDao().insertLeague(League(name = kName, description = "UCL Stage", isHomeAndAway = false, type = LeagueType.CLASSIC))
                                     val allLeagues = db.leagueDao().getAllLeagues().first()
                                     val newLeague = allLeagues.find { it.name == kName }
                                     newLeague?.let { league ->
-                                        qualifiedTeams.forEach { team -> 
-                                            db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null)) 
-                                        }
+                                        qualifiedTeams.forEach { team -> db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null)) }
                                         val newTeams = db.teamDao().getTeamsByLeague(league.id).first()
-                                        
-                                        // Generate TOURNAMENT DRAW (4 matches for Quarters, etc.)
                                         generatedFixtures = FixtureGenerator.generateKnockoutDraw(newTeams, stageLabel)
                                         currentStageLabel = stageLabel
                                         selectedLeague = league
@@ -240,13 +224,6 @@ class MainActivity : ComponentActivity() {
                                     currentScreen = "fixture_list"
                                 }
                             }
-                        )
-                        "match_history" -> MatchHistoryScreen(
-                            matches = matches,
-                            teams = teams,
-                            onDeleteMatch = { match -> MainScope().launch { db.matchDao().deleteMatch(match) } }, 
-                            onUpdateMatch = { updatedMatch -> MainScope().launch { db.matchDao().insertMatch(updatedMatch) } },
-                            onBack = { currentScreen = "team_list" }
                         )
                     }
                 }
