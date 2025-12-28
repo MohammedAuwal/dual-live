@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
             var homeScore by remember { mutableStateOf(0) }
             var awayScore by remember { mutableStateOf(0) }
             var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
-            var currentStageLabel by remember { mutableStateOf("") }
+            var currentStageLabel by rememberSaveable { mutableStateOf("") }
 
             BackHandler(enabled = currentScreen != "league_list") {
                 when (currentScreen) {
@@ -76,23 +76,49 @@ class MainActivity : ComponentActivity() {
                             title = { Text("🏆 CHAMPION 🏆", fontWeight = FontWeight.Bold) },
                             text = { Text("$name has won the competition!") },
                             confirmButton = {
-                                Button(onClick = { winnerName = null; currentStageLabel = ""; currentScreen = "league_list" }) { Text("OK") }
+                                Button(onClick = { 
+                                    winnerName = null
+                                    currentStageLabel = ""
+                                    currentScreen = "league_list" 
+                                }) { Text("OK") }
                             }
                         )
                     }
 
                     when (currentScreen) {
-                        "league_list" -> LeagueListScreen(leagues = leagues, onLeagueClick = { league -> selectedLeague = league; generatedFixtures = emptyList(); currentScreen = "team_list" }, onDeleteLeague = { league -> MainScope().launch { db.leagueDao().deleteLeague(league) } }, onAddLeagueClick = { currentScreen = "create_league" })
-                        "create_league" -> CreateLeagueScreen(onSave = { name, desc, homeAway, leagueType -> MainScope().launch { db.leagueDao().insertLeague(League(name = name, description = desc, isHomeAndAway = homeAway, type = leagueType)); currentScreen = "league_list" } })
+                        "league_list" -> LeagueListScreen(
+                            leagues = leagues, 
+                            onLeagueClick = { league -> 
+                                selectedLeague = league
+                                generatedFixtures = emptyList()
+                                // Detect if we are loading a knockout stage league
+                                currentStageLabel = if (league.name.contains("-")) league.name.substringAfter("- ").trim() else ""
+                                currentScreen = "team_list" 
+                            }, 
+                            onDeleteLeague = { league -> MainScope().launch { db.leagueDao().deleteLeague(league) } }, 
+                            onAddLeagueClick = { currentScreen = "create_league" }
+                        )
+                        "create_league" -> CreateLeagueScreen(onSave = { name, desc, homeAway, leagueType -> 
+                            MainScope().launch { 
+                                db.leagueDao().insertLeague(League(name = name, description = desc, isHomeAndAway = homeAway, type = leagueType))
+                                currentScreen = "league_list" 
+                            } 
+                        })
                         "team_list" -> {
                             Scaffold(
                                 bottomBar = {
                                     BottomAppBar {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = { 
-                                                generatedFixtures = if (selectedLeague?.type == LeagueType.CLASSIC) FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
-                                                else if (currentStageLabel.isEmpty()) FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
-                                                else FixtureGenerator.generateKnockoutDraw(teams, currentStageLabel)
+                                                generatedFixtures = if (selectedLeague?.type == LeagueType.CLASSIC) {
+                                                    FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                                } else {
+                                                    if (currentStageLabel.isEmpty()) {
+                                                        FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                                    } else {
+                                                        FixtureGenerator.generateKnockoutDraw(teams, currentStageLabel)
+                                                    }
+                                                }
                                                 currentScreen = "fixture_list"
                                             }) { Text("DRAW") }
                                             TextButton(onClick = { currentScreen = "match_entry" }) { Text("MANUAL") }
@@ -103,14 +129,41 @@ class MainActivity : ComponentActivity() {
                                 }
                             ) { padding ->
                                 Box(modifier = Modifier.padding(padding)) {
-                                    TeamListScreen(leagueName = if (currentStageLabel.isEmpty()) selectedLeague?.name ?: "" else currentStageLabel, teams = teams, isUcl = selectedLeague?.type == LeagueType.UCL, onBack = { currentScreen = "league_list" }, onAddTeamClick = { showAddTeamDialog = true }, onUpdateTeam = { updatedTeam -> MainScope().launch { db.teamDao().insertTeam(updatedTeam) } })
+                                    TeamListScreen(
+                                        leagueName = if (currentStageLabel.isEmpty()) selectedLeague?.name ?: "" else "${selectedLeague?.name?.substringBefore(" -")} - $currentStageLabel", 
+                                        teams = teams, 
+                                        isUcl = selectedLeague?.type == LeagueType.UCL, 
+                                        onBack = { currentScreen = "league_list" }, 
+                                        onAddTeamClick = { showAddTeamDialog = true }, 
+                                        onUpdateTeam = { updatedTeam -> MainScope().launch { db.teamDao().insertTeam(updatedTeam) } }
+                                    )
                                 }
                             }
                             if (showAddTeamDialog) {
-                                AddTeamScreen(leagueType = selectedLeague?.type ?: LeagueType.CLASSIC, onSave = { names, group -> MainScope().launch { names.forEach { db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = it, groupName = group)) }; showAddTeamDialog = false } }, onCancel = { showAddTeamDialog = false })
+                                AddTeamScreen(
+                                    leagueType = selectedLeague?.type ?: LeagueType.CLASSIC, 
+                                    onSave = { names, group -> 
+                                        MainScope().launch { 
+                                            names.forEach { db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = it, groupName = group)) }
+                                            showAddTeamDialog = false 
+                                        } 
+                                    }, 
+                                    onCancel = { showAddTeamDialog = false }
+                                )
                             }
                         }
-                        "fixture_list" -> FixtureListScreen(fixtures = generatedFixtures, matches = matches, onMatchSelect = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" }, onBack = { currentScreen = "team_list" })
+                        "fixture_list" -> FixtureListScreen(
+                            fixtures = generatedFixtures, 
+                            matches = matches, 
+                            onMatchSelect = { h, a -> 
+                                homeTeamForDisplay = h
+                                awayTeamForDisplay = a
+                                homeScore = 0
+                                awayScore = 0
+                                currentScreen = "live_display" 
+                            }, 
+                            onBack = { currentScreen = "team_list" }
+                        )
                         "standings" -> {
                             Scaffold(
                                 bottomBar = { 
@@ -122,7 +175,11 @@ class MainActivity : ComponentActivity() {
                                                 currentStageLabel.contains("Semi") -> "Proceed to Final"
                                                 else -> "Finish Tournament"
                                             }
-                                            Button(onClick = { currentScreen = "knockout_select" }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) { Text(nextLabel) }
+                                            Button(
+                                                onClick = { currentScreen = "knockout_select" }, 
+                                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp), 
+                                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                                            ) { Text(nextLabel) }
                                         }
                                         Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Back") }
                                     }
@@ -139,13 +196,21 @@ class MainActivity : ComponentActivity() {
                             onSaveAndClose = {
                                 MainScope().launch {
                                     db.matchDao().insertMatch(Match(leagueId = selectedLeague!!.id, homeTeamId = homeTeamForDisplay!!.id, awayTeamId = awayTeamForDisplay!!.id, homeScore = homeScore, awayScore = awayScore))
-                                    if (currentStageLabel.contains("Final")) winnerName = if (homeScore > awayScore) homeTeamForDisplay?.name else awayTeamForDisplay?.name
-                                    else currentScreen = "match_history"
+                                    // ONLY SHOW WINNER DIALOG IN THE FINAL
+                                    if (currentStageLabel.equals("Final", ignoreCase = true)) {
+                                        winnerName = if (homeScore > awayScore) homeTeamForDisplay?.name else awayTeamForDisplay?.name
+                                    } else {
+                                        currentScreen = "match_history"
+                                    }
                                 }
                             }, 
                             onCancel = { currentScreen = "fixture_list" }
                         )
-                        "knockout_select" -> KnockoutSelectionScreen(teams = teams, standings = standings, onBack = { currentScreen = "standings" }, onConfirmKnockouts = { qualifiedTeams, stageLabel ->
+                        "knockout_select" -> KnockoutSelectionScreen(
+                            teams = teams, 
+                            standings = standings, 
+                            onBack = { currentScreen = "standings" }, 
+                            onConfirmKnockouts = { qualifiedTeams, stageLabel ->
                                 MainScope().launch {
                                     val baseName = selectedLeague?.name?.substringBefore(" -") ?: ""
                                     val kName = "$baseName - $stageLabel"
@@ -163,8 +228,24 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         )
-                        "match_history" -> MatchHistoryScreen(matches = matches, teams = teams, onDeleteMatch = { m -> MainScope().launch { db.matchDao().deleteMatch(m) } }, onUpdateMatch = { updatedMatch -> MainScope().launch { db.matchDao().insertMatch(updatedMatch) } }, onBack = { currentScreen = "team_list" })
-                        "match_entry" -> MatchEntryScreen(teams = teams, onBack = { currentScreen = "team_list" }, onLaunchDisplay = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" })
+                        "match_history" -> MatchHistoryScreen(
+                            matches = matches, 
+                            teams = teams, 
+                            onDeleteMatch = { m -> MainScope().launch { db.matchDao().deleteMatch(m) } }, 
+                            onUpdateMatch = { updatedMatch -> MainScope().launch { db.matchDao().insertMatch(updatedMatch) } }, 
+                            onBack = { currentScreen = "team_list" }
+                        )
+                        "match_entry" -> MatchEntryScreen(
+                            teams = teams, 
+                            onBack = { currentScreen = "team_list" }, 
+                            onLaunchDisplay = { h, a -> 
+                                homeTeamForDisplay = h
+                                awayTeamForDisplay = a
+                                homeScore = 0
+                                awayScore = 0
+                                currentScreen = "live_display" 
+                            }
+                        )
                     }
                 }
             }
