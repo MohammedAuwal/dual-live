@@ -114,10 +114,16 @@ class MainActivity : ComponentActivity() {
                                     BottomAppBar {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = { 
-                                                generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
-                                                currentStageLabel = ""
-                                                currentScreen = "fixture_list"
-                                            }) { Text("DRAW") }
+                                                // CAUTIOUS: Only generate Round Robin for Classic League
+                                                if (selectedLeague?.type == LeagueType.CLASSIC) {
+                                                    generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                                    currentStageLabel = ""
+                                                    currentScreen = "fixture_list"
+                                                } else {
+                                                    // For UCL, we use the Step-by-Step logic in the Table/Standings
+                                                    currentScreen = "standings"
+                                                }
+                                            }) { Text(if (selectedLeague?.type == LeagueType.UCL) "TOURNAMENT" else "DRAW") }
                                             TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS") }
                                             TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
                                         }
@@ -134,20 +140,6 @@ class MainActivity : ComponentActivity() {
                                         onUpdateTeam = { updatedTeam -> MainScope().launch { db.teamDao().insertTeam(updatedTeam) } }
                                     )
                                 }
-                            }
-                            if (showAddTeamDialog) {
-                                AddTeamScreen(
-                                    leagueType = selectedLeague?.type ?: LeagueType.CLASSIC,
-                                    onSave = { names, group -> 
-                                        MainScope().launch { 
-                                            names.forEach { 
-                                                db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = it, groupName = group)) 
-                                            }
-                                            showAddTeamDialog = false 
-                                        } 
-                                    }, 
-                                    onCancel = { showAddTeamDialog = false }
-                                )
                             }
                         }
                         "fixture_list" -> FixtureListScreen(
@@ -186,14 +178,18 @@ class MainActivity : ComponentActivity() {
                             Scaffold(
                                 bottomBar = { 
                                     Column {
-                                        if (selectedLeague?.type == LeagueType.UCL || currentStageLabel.isNotEmpty()) {
-                                            val allMatchesPlayed = if (generatedFixtures.isNotEmpty()) {
+                                        // UCL Step-by-Step Transition Button
+                                        if (selectedLeague?.type == LeagueType.UCL) {
+                                            val isReadyForNext = if (generatedFixtures.isNotEmpty()) {
                                                 matches.size >= generatedFixtures.size
-                                            } else false
+                                            } else {
+                                                // Group Stage completion check
+                                                standings.isNotEmpty() && standings.all { it.matchesPlayed > 0 }
+                                            }
 
-                                            if (allMatchesPlayed) {
+                                            if (isReadyForNext) {
                                                 val nextLabel = when {
-                                                    currentStageLabel.isEmpty() -> "Proceed to Knockouts"
+                                                    currentStageLabel.isEmpty() -> "Proceed to Quarter-Finals"
                                                     currentStageLabel.contains("Quarter") -> "Proceed to Semi-Finals"
                                                     currentStageLabel.contains("Semi") -> "Proceed to Final"
                                                     else -> ""
@@ -222,12 +218,21 @@ class MainActivity : ComponentActivity() {
                                 MainScope().launch {
                                     val baseName = selectedLeague?.name?.substringBefore(" -") ?: ""
                                     val kName = "$baseName - $stageLabel"
-                                    db.leagueDao().insertLeague(League(name = kName, description = "UCL Stage", isHomeAndAway = false, type = LeagueType.CLASSIC))
+                                    
+                                    // CAUTIOUS: Force the LeagueType to UCL so it doesn't break into Classic mode
+                                    db.leagueDao().insertLeague(
+                                        League(name = kName, description = "UCL Stage", isHomeAndAway = false, type = LeagueType.UCL)
+                                    )
+                                    
                                     val allLeagues = db.leagueDao().getAllLeagues().first()
                                     val newLeague = allLeagues.find { it.name == kName }
                                     newLeague?.let { league ->
-                                        qualifiedTeams.forEach { team -> db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null)) }
+                                        qualifiedTeams.forEach { team -> 
+                                            db.teamDao().insertTeam(Team(leagueId = league.id, name = team.name, groupName = null)) 
+                                        }
                                         val newTeams = db.teamDao().getTeamsByLeague(league.id).first()
+                                        
+                                        // Generate TOURNAMENT DRAW (4 matches for Quarters, etc.)
                                         generatedFixtures = FixtureGenerator.generateKnockoutDraw(newTeams, stageLabel)
                                         currentStageLabel = stageLabel
                                         selectedLeague = league

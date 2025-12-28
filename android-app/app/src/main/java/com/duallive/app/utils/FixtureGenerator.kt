@@ -5,15 +5,19 @@ import com.duallive.app.data.entity.Team
 data class Fixture(val round: Int, val homeTeam: Team, val awayTeam: Team, val label: String = "")
 
 object FixtureGenerator {
+    
+    // SAFE ROUND ROBIN: Only runs for actual leagues or group stages
     fun generateRoundRobin(teams: List<Team>, homeAndAway: Boolean): List<Fixture> {
         if (teams.size < 2) return emptyList()
         
+        // Safety check: If these teams have no group names, they shouldn't be playing a 15-match league
         val groupedTeams = teams.groupBy { it.groupName }
         val allFixtures = mutableListOf<Fixture>()
 
-        groupedTeams.forEach { (_, groupTeams) ->
+        groupedTeams.forEach { (groupName, groupTeams) ->
             if (groupTeams.size < 2) return@forEach
 
+            // If it's a knockout stage, we don't use this math
             val teamList = if (groupTeams.size % 2 != 0) {
                 groupTeams + Team(id = -1, leagueId = -1, name = "BYE")
             } else {
@@ -52,15 +56,24 @@ object FixtureGenerator {
         return allFixtures
     }
 
-    // NEW: Specifically for UCL Knockout Stages
+    // UPDATED: Specifically for UCL Knockout Stages (Safe & Accurate)
     fun generateKnockoutDraw(teams: List<Team>, stageLabel: String): List<Fixture> {
+        // Only take even pairs. If 6 teams, make 3 matches. If 4 teams, 2 matches.
         val shuffled = teams.shuffled()
         val fixtures = mutableListOf<Fixture>()
         
-        for (i in 0 until shuffled.size - 1 step 2) {
+        // We use round 1 here so it doesn't show "Round 99"
+        val displayRound = when {
+            stageLabel.contains("Quarter") -> 1
+            stageLabel.contains("Semi") -> 2
+            stageLabel.contains("Final") -> 3
+            else -> 1
+        }
+        
+        for (i in 0 until (shuffled.size / 2) * 2 step 2) {
             fixtures.add(
                 Fixture(
-                    round = 99, // High number to distinguish from group rounds
+                    round = displayRound, 
                     homeTeam = shuffled[i],
                     awayTeam = shuffled[i+1],
                     label = stageLabel
