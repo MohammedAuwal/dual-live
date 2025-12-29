@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import com.duallive.app.data.entity.Match
 import com.duallive.app.data.entity.Team
 import com.duallive.app.utils.Fixture
@@ -29,101 +30,160 @@ fun FixtureListScreen(
     onBack: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    
-    // Create a lookup map for names to IDs to ensure we match correctly regardless of internal ID changes
-    val teamIdToName = remember(teams) { teams.associate { it.id to it.name } }
+
+    val teamIdToName = remember(teams) {
+        teams.associate { it.id to it.name }
+    }
 
     fun findMatchForFixture(fixture: Fixture): Match? {
         return matches.find { m ->
-            val playedHomeName = teamIdToName[m.homeTeamId]
-            val playedAwayName = teamIdToName[m.awayTeamId]
-            (playedHomeName == fixture.homeTeam.name && playedAwayName == fixture.awayTeam.name)
+            val homeName = teamIdToName[m.homeTeamId]
+            val awayName = teamIdToName[m.awayTeamId]
+            homeName == fixture.homeTeam.name &&
+            awayName == fixture.awayTeam.name
         }
     }
 
     val totalFixtures = fixtures.size
     val completedCount = fixtures.count { findMatchForFixture(it) != null }
-    val progressValue = if (totalFixtures > 0) completedCount.toFloat() / totalFixtures else 0f
+    val progressValue =
+        if (totalFixtures > 0) completedCount.toFloat() / totalFixtures else 0f
     val percentage = (progressValue * 100).toInt()
 
     val filteredFixtures = remember(searchQuery, fixtures) {
         if (searchQuery.isBlank()) fixtures
-        else fixtures.filter { 
-            it.homeTeam.name.contains(searchQuery, ignoreCase = true) || 
-            it.awayTeam.name.contains(searchQuery, ignoreCase = true) 
+        else fixtures.filter {
+            it.homeTeam.name.contains(searchQuery, ignoreCase = true) ||
+            it.awayTeam.name.contains(searchQuery, ignoreCase = true)
         }
     }
 
     val groupedFixtures = filteredFixtures.groupBy { it.round }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Tournament Schedule", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Tournament Schedule",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold
+        )
+
         Spacer(modifier = Modifier.height(8.dp))
+
         Row(verticalAlignment = Alignment.CenterVertically) {
             LinearProgressIndicator(
                 progress = progressValue,
-                modifier = Modifier.weight(1f).height(8.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .height(8.dp),
                 color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
             Text(
                 text = "$percentage%",
                 modifier = Modifier.padding(start = 8.dp),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.bodySmall
             )
         }
 
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
             placeholder = { Text("Search team name...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null)
+            },
             singleLine = true
         )
-        
+
         LazyColumn(modifier = Modifier.weight(1f)) {
-            groupedFixtures.forEach { (round, matchesInRound) ->
+            groupedFixtures.forEach { (round, roundFixtures) ->
                 stickyHeader {
                     Text(
                         text = if (round > 0) "ROUND $round" else "MATCHES",
-                        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .padding(8.dp),
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
 
-                items(matchesInRound) { fixture ->
+                items(roundFixtures) { fixture ->
                     val matchData = findMatchForFixture(fixture)
                     val isDone = matchData != null
 
                     Card(
-                        onClick = { if (!isDone) onMatchSelect(fixture.homeTeam, fixture.awayTeam) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        onClick = {
+                            if (!isDone) {
+                                onMatchSelect(fixture.homeTeam, fixture.awayTeam)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        enabled = !isDone,
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isDone) Color.LightGray.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        enabled = !isDone
+                            containerColor =
+                                if (isDone)
+                                    Color.LightGray.copy(alpha = 0.4f)
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
-                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(fixture.homeTeam.name, modifier = Modifier.weight(1f))
-                            
+                        Row(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = fixture.homeTeam.name,
+                                modifier = Modifier.weight(1f)
+                            )
+
                             if (isDone) {
-                                Text("${matchData?.homeScore} - ${matchData?.awayScore}", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
-                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
+                                Text(
+                                    text = "${matchData?.homeScore} - ${matchData?.awayScore}",
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF4CAF50)
+                                )
                             } else {
-                                Text("vs", modifier = Modifier.padding(horizontal = 8.dp))
+                                Text(
+                                    text = "vs",
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
                             }
 
-                            Text(fixture.awayTeam.name, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+                            Text(
+                                text = fixture.awayTeam.name,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.End
+                            )
                         }
                     }
                 }
             }
         }
 
-        Button(onClick = onBack, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Button(
+            onClick = onBack,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+        ) {
             Text("Back to Dashboard")
         }
     }
