@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Search
@@ -14,8 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Match
 import com.duallive.app.data.entity.Team
 import com.duallive.app.utils.Fixture
@@ -41,6 +42,19 @@ fun FixtureListScreen(
             val awayName = teamIdToName[m.awayTeamId]
             homeName == fixture.homeTeam.name &&
             awayName == fixture.awayTeam.name
+        }
+    }
+
+    // For knockout stages: track selected teams
+    val knockoutSelectedTeams = remember {
+        mutableStateMapOf<String, Boolean>() // teamId -> selected
+    }
+
+    // Pre-select top teams for knockout automatically
+    LaunchedEffect(fixtures) {
+        fixtures.forEach { fixture ->
+            knockoutSelectedTeams.putIfAbsent(fixture.homeTeam.id, true)
+            knockoutSelectedTeams.putIfAbsent(fixture.awayTeam.id, true)
         }
     }
 
@@ -97,9 +111,7 @@ fun FixtureListScreen(
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
             placeholder = { Text("Search team name...") },
-            leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = null)
-            },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true
         )
 
@@ -119,13 +131,10 @@ fun FixtureListScreen(
                 items(roundFixtures) { fixture ->
                     val matchData = findMatchForFixture(fixture)
                     val isDone = matchData != null
+                    val isKnockout = fixture.round > 0 // assume knockout rounds > 0
 
                     Card(
-                        onClick = {
-                            if (!isDone) {
-                                onMatchSelect(fixture.homeTeam, fixture.awayTeam)
-                            }
-                        },
+                        onClick = { if (!isDone && !isKnockout) onMatchSelect(fixture.homeTeam, fixture.awayTeam) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp),
@@ -144,34 +153,61 @@ fun FixtureListScreen(
                                 .fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = fixture.homeTeam.name,
-                                modifier = Modifier.weight(1f)
-                            )
+                            if (isKnockout) {
+                                val homeSelected = knockoutSelectedTeams.getOrDefault(fixture.homeTeam.id, true)
+                                val awaySelected = knockoutSelectedTeams.getOrDefault(fixture.awayTeam.id, true)
 
-                            if (isDone) {
-                                Text(
-                                    text = "${matchData?.homeScore} - ${matchData?.awayScore}",
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
-                                )
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFF4CAF50)
-                                )
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = homeSelected,
+                                        onCheckedChange = { knockoutSelectedTeams[fixture.homeTeam.id] = it }
+                                    )
+                                    Text(fixture.homeTeam.name, modifier = Modifier.padding(start = 4.dp))
+                                }
+
+                                Text("vs", modifier = Modifier.padding(horizontal = 8.dp))
+
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Text(fixture.awayTeam.name, modifier = Modifier.padding(end = 4.dp))
+                                    Checkbox(
+                                        checked = awaySelected,
+                                        onCheckedChange = { knockoutSelectedTeams[fixture.awayTeam.id] = it }
+                                    )
+                                }
                             } else {
                                 Text(
-                                    text = "vs",
-                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                    text = fixture.homeTeam.name,
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                if (isDone) {
+                                    Text(
+                                        text = "${matchData?.homeScore} - ${matchData?.awayScore}",
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp)
+                                    )
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF4CAF50)
+                                    )
+                                } else {
+                                    Text("vs", modifier = Modifier.padding(horizontal = 8.dp))
+                                }
+
+                                Text(
+                                    text = fixture.awayTeam.name,
+                                    modifier = Modifier.weight(1f),
+                                    textAlign = TextAlign.End
                                 )
                             }
-
-                            Text(
-                                text = fixture.awayTeam.name,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.End
-                            )
                         }
                     }
                 }

@@ -38,17 +38,30 @@ fun MatchDisplayScreen(
     val timeText = "%02d:%02d".format(seconds / 60, seconds % 60)
 
     Column(
-        modifier = Modifier.fillMaxSize().background(Color.Black).padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (isFinal) {
-            Text("🏆 CHAMPIONS LEAGUE FINAL 🏆", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFD700)) // Gold color
+        if (stageLabel.isNotEmpty()) {
+            Text(
+                text = if (isFinal) "🏆 $stageLabel 🏆" else stageLabel.uppercase(),
+                fontSize = if (isFinal) 20.sp else 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (isFinal) Color(0xFFFFD700) else Color.White
+            )
             Spacer(modifier = Modifier.height(8.dp))
         }
 
         Text(timeText, fontSize = 70.sp, fontWeight = FontWeight.Bold, color = Color.White)
 
-        Row(modifier = Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             // Home Section
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(homeName, fontSize = 24.sp, color = Color.White)
@@ -75,11 +88,19 @@ fun MatchDisplayScreen(
         }
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Button(onClick = { isRunning = !isRunning }) { Text(if (isRunning) "PAUSE" else "START") }
-            Button(onClick = onSaveAndClose, colors = ButtonDefaults.buttonColors(containerColor = Color.Green)) {
+            Button(onClick = { isRunning = !isRunning }) {
+                Text(if (isRunning) "PAUSE" else "START")
+            }
+            Button(
+                onClick = onSaveAndClose,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
+            ) {
                 Text("FINISH & SAVE", color = Color.Black)
             }
-            Button(onClick = onCancel, colors = ButtonDefaults.buttonColors(containerColor = Color.Red)) {
+            Button(
+                onClick = onCancel,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+            ) {
                 Text("DISCARD")
             }
         }
