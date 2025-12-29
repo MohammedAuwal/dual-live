@@ -40,7 +40,6 @@ class MainActivity : ComponentActivity() {
             var homeScore by remember { mutableStateOf(0) }
             var awayScore by remember { mutableStateOf(0) }
             
-            // Keeps fixtures in memory so they don't reset when going back to dashboard
             var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
             var currentStageLabel by rememberSaveable { mutableStateOf("") }
 
@@ -143,7 +142,13 @@ class MainActivity : ComponentActivity() {
                             onUpdateAway = { awayScore += it }, 
                             onSaveAndClose = {
                                 MainScope().launch {
-                                    db.matchDao().insertMatch(Match(selectedLeague!!.id, homeTeamForDisplay!!.id, awayTeamForDisplay!!.id, homeScore, awayScore))
+                                    db.matchDao().insertMatch(Match(
+                                        leagueId = selectedLeague!!.id, 
+                                        homeTeamId = homeTeamForDisplay!!.id, 
+                                        awayTeamId = awayTeamForDisplay!!.id, 
+                                        homeScore = homeScore, 
+                                        awayScore = awayScore
+                                    ))
                                     currentScreen = "fixture_list"
                                 }
                             }, 
@@ -152,14 +157,22 @@ class MainActivity : ComponentActivity() {
                         "standings" -> {
                             Scaffold(
                                 bottomBar = {
-                                    if (selectedLeague?.type == LeagueType.UCL) {
-                                        Button(onClick = { currentScreen = "knockout_select" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Next Round") }
+                                    Column {
+                                        if (selectedLeague?.type == LeagueType.UCL) {
+                                            Button(onClick = { currentScreen = "knockout_select" }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text("Next Round") }
+                                        }
+                                        Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Back") }
                                     }
-                                    Button(onClick = { currentScreen = "team_list" }, modifier = Modifier.fillMaxWidth().padding(16.dp)) { Text("Back") }
                                 }
                             ) { p -> Box(modifier = Modifier.padding(p)) { StandingsScreen(teams, TableCalculator.calculate(teams, matches)) } }
                         }
-                        "match_history" -> MatchHistoryScreen(matches, teams, { m -> MainScope().launch { db.matchDao().deleteMatch(m) } }, { m -> MainScope().launch { db.matchDao().insertMatch(m) } }, { currentScreen = "team_list" })
+                        "match_history" -> MatchHistoryScreen(
+                            matches = matches, 
+                            teams = teams, 
+                            onDeleteMatch = { m -> MainScope().launch { db.matchDao().deleteMatch(m) } }, 
+                            onUpdateMatch = { m -> MainScope().launch { db.matchDao().insertMatch(m) } }, 
+                            onBack = { currentScreen = "team_list" }
+                        )
                         "knockout_select" -> KnockoutSelectionScreen(teams, TableCalculator.calculate(teams, matches), { currentScreen = "standings" }, { qTeams, stage ->
                             MainScope().launch {
                                 val baseName = selectedLeague?.name?.substringBefore(" -") ?: ""
