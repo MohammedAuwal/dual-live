@@ -24,19 +24,23 @@ import com.duallive.app.utils.Fixture
 fun FixtureListScreen(
     fixtures: List<Fixture>,
     matches: List<Match>,
+    teams: List<Team>,
     onMatchSelect: (Team, Team) -> Unit,
     onBack: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     
-    // Helper function to check if a fixture is played
+    // Create a lookup map for names to IDs to ensure we match correctly regardless of internal ID changes
+    val teamIdToName = remember(teams) { teams.associate { it.id to it.name } }
+
     fun findMatchForFixture(fixture: Fixture): Match? {
         return matches.find { m ->
-            m.homeTeamId == fixture.homeTeam.id && m.awayTeamId == fixture.awayTeam.id
+            val playedHomeName = teamIdToName[m.homeTeamId]
+            val playedAwayName = teamIdToName[m.awayTeamId]
+            (playedHomeName == fixture.homeTeam.name && playedAwayName == fixture.awayTeam.name)
         }
     }
 
-    // Calculate Progress
     val totalFixtures = fixtures.size
     val completedCount = fixtures.count { findMatchForFixture(it) != null }
     val progressValue = if (totalFixtures > 0) completedCount.toFloat() / totalFixtures else 0f
@@ -70,11 +74,6 @@ fun FixtureListScreen(
                 fontWeight = FontWeight.Bold
             )
         }
-        Text(
-            text = "$completedCount of $totalFixtures matches played",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.outline
-        )
 
         OutlinedTextField(
             value = searchQuery,
@@ -89,68 +88,35 @@ fun FixtureListScreen(
             groupedFixtures.forEach { (round, matchesInRound) ->
                 stickyHeader {
                     Text(
-                        text = if (round > 0) "ROUND $round" else "KNOCKOUT STAGE",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.secondaryContainer)
-                            .padding(8.dp),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                        text = if (round > 0) "ROUND $round" else "MATCHES",
+                        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(8.dp),
+                        style = MaterialTheme.typography.labelLarge
                     )
                 }
 
                 items(matchesInRound) { fixture ->
-                    val completedMatch = findMatchForFixture(fixture)
-                    val isDone = completedMatch != null
+                    val matchData = findMatchForFixture(fixture)
+                    val isDone = matchData != null
 
                     Card(
                         onClick = { if (!isDone) onMatchSelect(fixture.homeTeam, fixture.awayTeam) },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isDone) Color(0xFFE0E0E0).copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceVariant
+                            containerColor = if (isDone) Color.LightGray.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant
                         ),
                         enabled = !isDone
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = fixture.homeTeam.name, 
-                                modifier = Modifier.weight(1f),
-                                color = if (isDone) Color.Gray else Color.Unspecified,
-                                fontWeight = if(searchQuery.isNotEmpty() && fixture.homeTeam.name.contains(searchQuery, true)) FontWeight.ExtraBold else FontWeight.Normal
-                            )
+                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(fixture.homeTeam.name, modifier = Modifier.weight(1f))
                             
                             if (isDone) {
-                                Text(
-                                    text = "${completedMatch?.homeScore} - ${completedMatch?.awayScore}",
-                                    modifier = Modifier.padding(horizontal = 8.dp),
-                                    fontWeight = FontWeight.Black,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Text("${matchData?.homeScore} - ${matchData?.awayScore}", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF4CAF50))
                             } else {
-                                Text("vs", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
+                                Text("vs", modifier = Modifier.padding(horizontal = 8.dp))
                             }
 
-                            Text(
-                                text = fixture.awayTeam.name, 
-                                modifier = Modifier.weight(1f),
-                                color = if (isDone) Color.Gray else Color.Unspecified,
-                                fontWeight = if(searchQuery.isNotEmpty() && fixture.awayTeam.name.contains(searchQuery, true)) FontWeight.ExtraBold else FontWeight.Normal,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.End
-                            )
-                            
-                            if (isDone) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color(0xFF4CAF50),
-                                    modifier = Modifier.padding(start = 8.dp).size(20.dp)
-                                )
-                            }
+                            Text(fixture.awayTeam.name, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
                         }
                     }
                 }

@@ -53,14 +53,11 @@ class MainActivity : ComponentActivity() {
             }
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
-            
-            // Critical fix: Ensure teams and matches are always synced to the SELECTED league ID
             val teams by if (selectedLeague != null) {
                 db.teamDao().getTeamsByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
                 remember { mutableStateOf(emptyList<Team>()) }
             }
-            
             val matches by if (selectedLeague != null) {
                 db.matchDao().getMatchesByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
@@ -156,7 +153,8 @@ class MainActivity : ComponentActivity() {
                         }
                         "fixture_list" -> FixtureListScreen(
                             fixtures = generatedFixtures, 
-                            matches = matches, 
+                            matches = matches,
+                            teams = teams,
                             onMatchSelect = { h, a -> 
                                 homeTeamForDisplay = h
                                 awayTeamForDisplay = a
@@ -207,7 +205,6 @@ class MainActivity : ComponentActivity() {
                                     if (currentStageLabel.equals("Final", ignoreCase = true)) {
                                         winnerName = if (homeScore > awayScore) homeTeamForDisplay?.name else awayTeamForDisplay?.name
                                     } else {
-                                        // Force navigation back to fixtures to refresh the Green Tick
                                         currentScreen = "fixture_list"
                                     }
                                 }
