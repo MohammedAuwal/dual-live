@@ -14,17 +14,18 @@ object FixtureGenerator {
         groupedTeams.forEach { (groupName, groupTeams) ->
             if (groupTeams.size < 2) return@forEach
 
-            // If groupName is null, it means we are in UCL Knockouts. 
-            // We force knockout draw to prevent the 15-match league bug.
-            if (groupName == null) {
+            // UCL Fix: If teams have no group name, they are in a Knockout stage.
+            // We don't want a league; we want one-off matches.
+            if (groupName == null && groupTeams.size <= 8) {
                 allFixtures.addAll(generateKnockoutDraw(groupTeams, "Knockout"))
                 return@forEach
             }
 
-            val teamList = if (groupTeams.size % 2 != 0) {
-                groupTeams + Team(id = -1, leagueId = -1, name = "BYE")
-            } else {
-                groupTeams
+            val teamList = groupTeams.toMutableList()
+            // Add a dummy team if odd number, but we won't add it to the final list
+            val hasBye = teamList.size % 2 != 0
+            if (hasBye) {
+                teamList.add(Team(id = -1, leagueId = -1, name = "BYE"))
             }
             
             val numTeams = teamList.size
@@ -41,6 +42,7 @@ object FixtureGenerator {
                     val homeTeam = teamList[home]
                     val awayTeam = teamList[away]
 
+                    // Only add the match if neither team is the "BYE" team
                     if (homeTeam.id != -1 && awayTeam.id != -1) {
                         groupFixtures.add(Fixture(round + 1, homeTeam, awayTeam))
                     }
@@ -61,7 +63,7 @@ object FixtureGenerator {
     fun generateKnockoutDraw(teams: List<Team>, stageLabel: String): List<Fixture> {
         val shuffled = teams.shuffled()
         val fixtures = mutableListOf<Fixture>()
-        // Creates exactly 1 match for every 2 teams (e.g., 6 teams = 3 matches)
+        // Creates exactly 1 match for every 2 teams (e.g., 8 teams = 4 matches)
         for (i in 0 until (shuffled.size / 2) * 2 step 2) {
             fixtures.add(Fixture(1, shuffled[i], shuffled[i+1], stageLabel))
         }

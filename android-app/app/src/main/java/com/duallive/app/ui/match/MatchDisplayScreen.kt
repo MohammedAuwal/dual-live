@@ -47,14 +47,15 @@ fun MatchDisplayScreen(
         if (stageLabel.isNotEmpty()) {
             Text(
                 text = if (isFinal) "🏆 $stageLabel 🏆" else stageLabel.uppercase(),
-                fontSize = if (isFinal) 20.sp else 18.sp,
+                fontSize = if (isFinal) 24.sp else 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (isFinal) Color(0xFFFFD700) else Color.White
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Text(timeText, fontSize = 70.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        // Timer Display
+        Text(timeText, fontSize = 80.sp, fontWeight = FontWeight.Bold, color = Color.White)
 
         Row(
             modifier = Modifier
@@ -64,44 +65,53 @@ fun MatchDisplayScreen(
         ) {
             // Home Section
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(homeName, fontSize = 24.sp, color = Color.White)
-                Text("$homeScore", fontSize = 100.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(homeName, fontSize = 22.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                Text("$homeScore", fontSize = 110.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Row {
-                    Button(onClick = { onUpdateHome(1) }) { Text("+") }
+                    Button(onClick = { onUpdateHome(1) }) { Text("+", fontSize = 20.sp) }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { if(homeScore > 0) onUpdateHome(-1) }) { Text("-") }
+                    Button(onClick = { if(homeScore > 0) onUpdateHome(-1) }) { Text("-", fontSize = 20.sp) }
                 }
             }
 
-            Text("VS", color = Color.Gray, fontSize = 20.sp)
+            Text("VS", color = Color.Gray, fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
             // Away Section
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(awayName, fontSize = 24.sp, color = Color.White)
-                Text("$awayScore", fontSize = 100.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(awayName, fontSize = 22.sp, color = Color.White, fontWeight = FontWeight.Medium)
+                Text("$awayScore", fontSize = 110.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Row {
-                    Button(onClick = { onUpdateAway(1) }) { Text("+") }
+                    Button(onClick = { onUpdateAway(1) }) { Text("+", fontSize = 20.sp) }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = { if(awayScore > 0) onUpdateAway(-1) }) { Text("-") }
+                    Button(onClick = { if(awayScore > 0) onUpdateAway(-1) }) { Text("-", fontSize = 20.sp) }
                 }
             }
         }
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            Button(onClick = { isRunning = !isRunning }) {
+        // Control Buttons
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), 
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                onClick = { isRunning = !isRunning },
+                colors = ButtonDefaults.buttonColors(containerColor = if (isRunning) Color.DarkGray else Color.Blue)
+            ) {
                 Text(if (isRunning) "PAUSE" else "START")
             }
+            
             Button(
                 onClick = onSaveAndClose,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
             ) {
-                Text("FINISH & SAVE", color = Color.Black)
+                Text("FINISH", color = Color.White)
             }
+            
             Button(
                 onClick = onCancel,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
             ) {
-                Text("DISCARD")
+                Text("DISCARD", color = Color.White)
             }
         }
     }

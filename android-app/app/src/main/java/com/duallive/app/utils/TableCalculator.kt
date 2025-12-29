@@ -12,7 +12,7 @@ object TableCalculator {
             val home = standingsMap[match.homeTeamId] ?: continue
             val away = standingsMap[match.awayTeamId] ?: continue
 
-            // 1. Calculate base updates (Matches Played + Goals)
+            // 1. Calculate base updates
             var h = home.copy(
                 matchesPlayed = home.matchesPlayed + 1,
                 goalsFor = home.goalsFor + match.homeScore,
@@ -24,7 +24,7 @@ object TableCalculator {
                 goalsAgainst = away.goalsAgainst + match.homeScore
             )
 
-            // 2. Calculate Outcome (W/D/L + Points)
+            // 2. Calculate Outcome (Points)
             when {
                 match.homeScore > match.awayScore -> {
                     h = h.copy(wins = h.wins + 1, points = h.points + 3)
@@ -44,15 +44,18 @@ object TableCalculator {
             standingsMap[match.awayTeamId] = a
         }
 
-        // 3. Professional Sorting Logic
-        // Primary: Points
-        // Secondary: Goal Difference (GF - GA)
-        // Tertiary: Goals Scored (GF)
-        
+        // 3. Sorting: Points -> GD -> GF
         return standingsMap.values.toList().sortedWith(
             compareByDescending<Standing> { it.points }
                 .thenByDescending { it.goalsFor - it.goalsAgainst }
                 .thenByDescending { it.goalsFor }
         )
+    }
+
+    // Helper for UCL to check if all teams have played enough matches
+    fun isGroupStageComplete(teams: List<Team>, matches: List<Match>): Boolean {
+        if (teams.isEmpty()) return false
+        val totalExpectedMatches = (teams.size * (teams.size - 1)) / 2
+        return matches.size >= totalExpectedMatches
     }
 }
