@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity() {
 
             var currentStageLabel by rememberSaveable { mutableStateOf("") }
             var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
+            var selectedGroup by rememberSaveable { mutableStateOf("A") }
 
             BackHandler(enabled = currentScreen != "league_list") {
                 when (currentScreen) {
@@ -54,7 +55,6 @@ class MainActivity : ComponentActivity() {
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             
-            // Harmonized state collection using Long IDs
             val teams by produceState<List<Team>>(initialValue = emptyList(), selectedLeague) {
                 selectedLeague?.let {
                     db.teamDao().getTeamsByLeague(it.id.toLong()).collect { value = it }
@@ -112,26 +112,71 @@ class MainActivity : ComponentActivity() {
                         "team_list" -> {
                             Scaffold(
                                 bottomBar = {
-                                    BottomAppBar {
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                            TextButton(onClick = {
-                                                if (generatedFixtures.isEmpty()) {
-                                                    generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                    Column {
+                                        // UCL group selection dropdown
+                                        if (selectedLeague?.type == LeagueType.UCL) {
+                                            var expanded by remember { mutableStateOf(false) }
+                                            val groupOptions = listOf("A", "B", "C", "D", "E", "F", "G", "H")
+                                            Box(modifier = Modifier.padding(8.dp)) {
+                                                TextButton(onClick = { expanded = true }) {
+                                                    Text("Group: $selectedGroup")
                                                 }
-                                                currentScreen = "fixture_list"
-                                            }) { Text("DRAW") }
+                                                DropdownMenu(
+                                                    expanded = expanded,
+                                                    onDismissRequest = { expanded = false }
+                                                ) {
+                                                    groupOptions.forEach { group ->
+                                                        DropdownMenuItem(
+                                                            text = { Text(group) },
+                                                            onClick = {
+                                                                selectedGroup = group
+                                                                expanded = false
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
 
-                                            TextButton(onClick = { currentScreen = "match_entry" }) { Text("MANUAL") }
-                                            TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS") }
-                                            TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
-                                            
-                                            if (selectedLeague?.type == LeagueType.UCL) {
-                                                val canProceed = generatedFixtures.isNotEmpty() && matches.size >= generatedFixtures.size
-                                                TextButton(
-                                                    onClick = { currentScreen = "knockout_select" },
-                                                    enabled = canProceed
-                                                ) { 
-                                                    Text("PROCEED") 
+                                        BottomAppBar {
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                                TextButton(onClick = {
+                                                    if (selectedLeague?.type == LeagueType.UCL) {
+                                                        val groups = teams.groupBy { it.groupName }
+                                                        val groupTeams = groups[selectedGroup] ?: emptyList()
+                                                        if (groupTeams.isNotEmpty()) {
+                                                            generatedFixtures = FixtureGenerator.generateRoundRobin(groupTeams, selectedLeague?.isHomeAndAway ?: false)
+                                                        }
+                                                    } else {
+                                                        if (generatedFixtures.isEmpty()) {
+                                                            generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
+                                                        }
+                                                    }
+                                                    currentScreen = "fixture_list"
+                                                }) { Text("DRAW") }
+
+                                                TextButton(onClick = { currentScreen = "match_entry" }) { Text("MANUAL") }
+                                                TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS") }
+                                                TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
+
+                                                if (selectedLeague?.type == LeagueType.UCL) {
+                                                    val canProceed = teams.isNotEmpty() && generatedFixtures.isNotEmpty() &&
+                                                        matches.filter { it.stageLabel == currentStageLabel }.size >= generatedFixtures.size
+
+                                                    TextButton(
+                                                        onClick = {
+                                                            MainScope().launch {
+                                                                val topTeams = TableCalculator.getTopTeamsForKnockout(teams, matches)
+                                                                if (topTeams.isNotEmpty()) {
+                                                                    db.matchDao().deleteMatchesByLeague(selectedLeague!!.id.toLong())
+                                                                    generatedFixtures = FixtureGenerator.generateKnockoutDraw(topTeams, nextStage(currentStageLabel))
+                                                                    currentStageLabel = nextStage(currentStageLabel)
+                                                                    currentScreen = "fixture_list"
+                                                                }
+                                                            }
+                                                        },
+                                                        enabled = canProceed
+                                                    ) { Text("PROCEED") }
                                                 }
                                             }
                                         }
@@ -163,16 +208,17 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
+                        // Rest of screens remain unchanged...
                         "fixture_list" -> FixtureListScreen(
                             fixtures = generatedFixtures,
                             matches = matches,
                             teams = teams,
-                            onMatchSelect = { h, a -> 
+                            onMatchSelect = { h, a ->
                                 homeTeamForDisplay = h
                                 awayTeamForDisplay = a
                                 homeScore = 0
                                 awayScore = 0
-                                currentScreen = "live_display" 
+                                currentScreen = "live_display"
                             },
                             onBack = { currentScreen = "team_list" }
                         )
@@ -212,7 +258,8 @@ class MainActivity : ComponentActivity() {
                                         homeTeamId = homeTeamForDisplay!!.id,
                                         awayTeamId = awayTeamForDisplay!!.id,
                                         homeScore = homeScore,
-                                        awayScore = awayScore
+                                        awayScore = awayScore,
+                                        stageLabel = currentStageLabel
                                     ))
                                     currentScreen = "fixture_list"
                                 }
@@ -242,6 +289,15 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun nextStage(currentStage: String): String {
+        return when (currentStage) {
+            "Group Stage" -> "Quarter-Final"
+            "Quarter-Final" -> "Semi-Final"
+            "Semi-Final" -> "Final"
+            else -> "Champion"
         }
     }
 }
