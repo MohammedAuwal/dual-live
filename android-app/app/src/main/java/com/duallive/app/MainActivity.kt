@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.duallive.app.ui.league.*
@@ -64,7 +65,7 @@ class MainActivity : ComponentActivity() {
                                 league = league,
                                 teams = teams,
                                 onBack = { currentScreen = "league_list" },
-                                onAddTeamClick = { /* Handled inside TeamListScreen */ },
+                                onAddTeamClick = { /* Logic inside TeamListScreen */ },
                                 onUpdateTeam = { scope.launch { db.teamDao().updateTeam(it) } },
                                 onNavigateToMatches = { currentScreen = "match_history" },
                                 onNavigateToTable = { currentScreen = "standings" },
@@ -78,6 +79,11 @@ class MainActivity : ComponentActivity() {
                             onDeleteMatch = { scope.launch { db.matchDao().deleteMatch(it) } },
                             onUpdateMatch = { scope.launch { db.matchDao().updateMatch(it) } },
                             onBack = { currentScreen = "team_list" }
+                        )
+                        "match_entry" -> MatchEntryScreen(
+                            leagueId = selectedLeague?.id ?: 0L,
+                            teams = teams,
+                            onMatchSaved = { currentScreen = "team_list" }
                         )
                     }
                 }
