@@ -41,7 +41,11 @@ class MainActivity : ComponentActivity() {
             val standings = remember(teams, matches) { TableCalculator.calculate(teams, matches) }
 
             BackHandler(currentScreen != "league_list") {
-                currentScreen = "league_list"
+                currentScreen = when (currentScreen) {
+                    "team_list" -> "league_list"
+                    "standings", "match_history", "match_entry" -> "team_list"
+                    else -> "league_list"
+                }
             }
 
             MaterialTheme {
@@ -65,7 +69,7 @@ class MainActivity : ComponentActivity() {
                                 league = league,
                                 teams = teams,
                                 onBack = { currentScreen = "league_list" },
-                                onAddTeamClick = { /* Logic inside TeamListScreen */ },
+                                onAddTeamClick = { /* Add Team Logic */ },
                                 onUpdateTeam = { scope.launch { db.teamDao().updateTeam(it) } },
                                 onNavigateToMatches = { currentScreen = "match_history" },
                                 onNavigateToTable = { currentScreen = "standings" },
@@ -81,9 +85,12 @@ class MainActivity : ComponentActivity() {
                             onBack = { currentScreen = "team_list" }
                         )
                         "match_entry" -> MatchEntryScreen(
-                            leagueId = selectedLeague?.id ?: 0L,
                             teams = teams,
-                            onMatchSaved = { currentScreen = "team_list" }
+                            onLaunchDisplay = { h, a -> 
+                                // Logic to start the scoreboard/live display
+                                currentScreen = "team_list" 
+                            },
+                            onBack = { currentScreen = "team_list" }
                         )
                     }
                 }
