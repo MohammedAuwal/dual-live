@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
                                             TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
                                             
                                             if (selectedLeague?.type == LeagueType.UCL) {
-                                                // PROCEED only works if all matches in the current DRAW are finished
+                                                // Check if the current stage is done
                                                 val canProceed = generatedFixtures.isNotEmpty() && matches.size >= generatedFixtures.size
                                                 TextButton(
                                                     onClick = { currentScreen = "knockout_select" },
@@ -175,8 +175,8 @@ class MainActivity : ComponentActivity() {
                                 if (stage == "Champion") {
                                     winnerName = selectedTeams.firstOrNull()?.name ?: "Unknown"
                                 } else {
-                                    // Reset matches for the new knockout stage so the count starts over
                                     MainScope().launch {
+                                        // CLEAR results to allow next knockout stage to start fresh
                                         db.matchDao().deleteMatchesByLeague(selectedLeague!!.id)
                                         generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, stage)
                                         currentStageLabel = stage
