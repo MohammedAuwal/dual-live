@@ -12,7 +12,6 @@ object TableCalculator {
             val home = standingsMap[match.homeTeamId] ?: continue
             val away = standingsMap[match.awayTeamId] ?: continue
 
-            // 1. Calculate base updates
             var h = home.copy(
                 matchesPlayed = home.matchesPlayed + 1,
                 goalsFor = home.goalsFor + match.homeScore,
@@ -24,7 +23,6 @@ object TableCalculator {
                 goalsAgainst = away.goalsAgainst + match.homeScore
             )
 
-            // 2. Calculate Outcome (Points)
             when {
                 match.homeScore > match.awayScore -> {
                     h = h.copy(wins = h.wins + 1, points = h.points + 3)
@@ -39,12 +37,10 @@ object TableCalculator {
                     a = a.copy(draws = a.draws + 1, points = a.points + 1)
                 }
             }
-            
             standingsMap[match.homeTeamId] = h
             standingsMap[match.awayTeamId] = a
         }
 
-        // 3. Sorting: Points -> Goal Difference -> Goals For
         return standingsMap.values.toList().sortedWith(
             compareByDescending<Standing> { it.points }
                 .thenByDescending { it.goalsFor - it.goalsAgainst }
@@ -53,17 +49,24 @@ object TableCalculator {
     }
 
     /**
-     * Safety Check for UCL:
-     * Calculates if all required matches have been played.
+     * 🔥 NEW SAFE PROGRESSION LOGIC
+     * This works for both Groups and Knockouts.
+     * It checks if all matches currently in the DRAW have been played.
      */
+    fun isStageComplete(matchesInCurrentLeague: List<Match>, fixturesInCurrentDraw: Int): Boolean {
+        if (fixturesInCurrentDraw == 0) return false
+        
+        // Count only matches that belong to the current knockout stage/draw
+        // For simplicity in this logic, we check if the results list is at least 
+        // as long as the current draw list.
+        return matchesInCurrentLeague.size >= fixturesInCurrentDraw
+    }
+
+    // Keep this for backward compatibility with your existing Classic League checks
     fun isGroupStageComplete(teams: List<Team>, matches: List<Match>, isHomeAndAway: Boolean = false): Boolean {
         if (teams.isEmpty()) return false
-        
-        // Group size usually 4. Total games = (N * (N-1) / 2)
-        // If Home & Away, multiply by 2.
         val baseMatches = (teams.size * (teams.size - 1)) / 2
         val totalNeeded = if (isHomeAndAway) baseMatches * 2 else baseMatches
-        
         return matches.size >= totalNeeded && matches.size > 0
     }
 }

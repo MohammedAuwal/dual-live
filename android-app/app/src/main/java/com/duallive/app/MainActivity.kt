@@ -43,7 +43,6 @@ class MainActivity : ComponentActivity() {
             var currentStageLabel by rememberSaveable { mutableStateOf("") }
             var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
 
-            // Back button handling for better UX
             BackHandler(enabled = currentScreen != "league_list") {
                 when (currentScreen) {
                     "team_list", "create_league" -> currentScreen = "league_list"
@@ -62,7 +61,6 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
 
-                    // Winner Celebration Dialog
                     winnerName?.let { name ->
                         AlertDialog(
                             onDismissRequest = { winnerName = null },
@@ -117,7 +115,14 @@ class MainActivity : ComponentActivity() {
                                             TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
                                             
                                             if (selectedLeague?.type == LeagueType.UCL) {
-                                                TextButton(onClick = { currentScreen = "knockout_select" }) { Text("PROCEED") }
+                                                // PROCEED only works if all matches in the current DRAW are finished
+                                                val canProceed = generatedFixtures.isNotEmpty() && matches.size >= generatedFixtures.size
+                                                TextButton(
+                                                    onClick = { currentScreen = "knockout_select" },
+                                                    enabled = canProceed
+                                                ) { 
+                                                    Text("PROCEED", color = if(canProceed) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Gray) 
+                                                }
                                             }
                                         }
                                     }
@@ -170,9 +175,13 @@ class MainActivity : ComponentActivity() {
                                 if (stage == "Champion") {
                                     winnerName = selectedTeams.firstOrNull()?.name ?: "Unknown"
                                 } else {
-                                    generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, stage)
-                                    currentStageLabel = stage
-                                    currentScreen = "fixture_list"
+                                    // Reset matches for the new knockout stage so the count starts over
+                                    MainScope().launch {
+                                        db.matchDao().deleteMatchesByLeague(selectedLeague!!.id)
+                                        generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, stage)
+                                        currentStageLabel = stage
+                                        currentScreen = "fixture_list"
+                                    }
                                 }
                             }
                         )
