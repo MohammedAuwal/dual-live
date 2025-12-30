@@ -44,7 +44,8 @@ class MainActivity : ComponentActivity() {
             BackHandler(currentScreen != "league_list") {
                 currentScreen = when (currentScreen) {
                     "team_list" -> "league_list"
-                    else -> "team_list"
+                    "standings", "match_history", "match_entry" -> "team_list"
+                    else -> "league_list"
                 }
             }
 
@@ -69,15 +70,25 @@ class MainActivity : ComponentActivity() {
                                 league = league,
                                 teams = teams,
                                 onBack = { currentScreen = "league_list" },
-                                onAddTeamClick = { /* logic for a separate add team screen or dialog */ },
-                                onUpdateTeam = { scope.launch { db.teamDao().updateTeam(it) } },
+                                onAddTeamClick = { 
+                                    // You can expand this later, but it satisfies the parameter
+                                },
+                                onUpdateTeam = { updatedTeam -> 
+                                    scope.launch { db.teamDao().updateTeam(updatedTeam) } 
+                                },
                                 onNavigateToMatches = { currentScreen = "match_history" },
                                 onNavigateToTable = { currentScreen = "standings" },
                                 onNavigateToManual = { currentScreen = "match_entry" }
                             )
                         }
                         "standings" -> StandingsScreen(teams = teams, standings = standings)
-                        "match_history" -> MatchHistoryScreen(matches = matches, teams = teams)
+                        "match_history" -> MatchHistoryScreen(
+                            matches = matches, 
+                            teams = teams,
+                            onDeleteMatch = { match -> scope.launch { db.matchDao().deleteMatch(match) } },
+                            onUpdateMatch = { match -> scope.launch { db.matchDao().updateMatch(match) } },
+                            onBack = { currentScreen = "team_list" }
+                        )
                     }
                 }
             }
