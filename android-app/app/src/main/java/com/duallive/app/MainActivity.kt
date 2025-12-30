@@ -35,160 +35,57 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val db = AppDatabase.getDatabase(this)
         val scope = MainScope()
-
-        // Initialize screen cast controller
         screenCastController = ScreenCastController(this)
 
         setContent {
             var currentScreen by rememberSaveable { mutableStateOf("league_list") }
             var selectedLeague by remember { mutableStateOf<League?>(null) }
-            var showAddTeamDialog by remember { mutableStateOf(false) }
             var winnerName by remember { mutableStateOf<String?>(null) }
-
-            // Screen casting state
             var liveCasting by rememberSaveable { mutableStateOf(false) }
-
-            // Match display
-            var homeName by remember { mutableStateOf("") }
-            var awayName by remember { mutableStateOf("") }
-            var homeScore by remember { mutableStateOf(0) }
-            var awayScore by remember { mutableStateOf(0) }
-            var selectedMatch by remember { mutableStateOf<Match?>(null) }
-            var selectedFixture by remember { mutableStateOf<Fixture?>(null) }
-
-            // UCL state
-            var currentStageLabel by rememberSaveable { mutableStateOf("Group Stage") }
-            var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
-            var selectedGroup by rememberSaveable { mutableStateOf("A") }
-            var uclStage by rememberSaveable { mutableStateOf("GROUP") }
-
-            // Classic League knockout
-            var classicKnockoutStage by rememberSaveable { mutableStateOf("") }
 
             BackHandler(enabled = currentScreen != "league_list") {
                 when (currentScreen) {
                     "team_list", "create_league" -> currentScreen = "league_list"
-                    "fixture_list", "match_entry", "match_history", "standings", "knockout_select" -> currentScreen = "team_list"
-                    "live_display" -> currentScreen = "fixture_list"
                     else -> currentScreen = "league_list"
                 }
             }
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
 
-            val teams by produceState<List<Team>>(initialValue = emptyList(), selectedLeague) {
-                selectedLeague?.let {
-                    val leagueIdLong = it.id.toLong()
-                    db.teamDao().getTeamsByLeague(leagueIdLong).collect { value = it }
-                }
-            }
-
-            val matches by produceState<List<Match>>(initialValue = emptyList(), selectedLeague) {
-                selectedLeague?.let {
-                    val leagueIdLong = it.id.toLong()
-                    db.matchDao().getMatchesByLeague(leagueIdLong).collect { value = it }
-                }
-            }
-
-            val standings = remember(teams, matches) { TableCalculator.calculate(teams, matches) }
-
-            // AUTOMATIC UCL PROGRESSION
-            LaunchedEffect(matches, selectedLeague, uclStage, teams) {
-                if (selectedLeague?.type == LeagueType.UCL && matches.isNotEmpty() && teams.isNotEmpty()) {
-                    val completedMatches = matches.filter { it.homeScore >= 0 && it.awayScore >= 0 }
-                    // existing UCL progression logic ...
-                }
-            }
-
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-
-                    winnerName?.let { name ->
-                        AlertDialog(
-                            onDismissRequest = { winnerName = null },
-                            title = { Text("🏆 CHAMPION 🏆", fontWeight = FontWeight.Bold) },
-                            text = {
-                                Text(
-                                    if (selectedLeague?.type == LeagueType.UCL)
-                                        "$name has won the UEFA Champions League!"
-                                    else
-                                        "$name has won the league!"
-                                )
-                            },
-                            confirmButton = {
-                                Button(onClick = {
-                                    winnerName = null
-                                    if (selectedLeague?.type == LeagueType.UCL) {
-                                        currentStageLabel = "Group Stage"
-                                        uclStage = "GROUP"
-                                    }
-                                    generatedFixtures = emptyList()
-                                    currentScreen = "league_list"
-                                }) { Text("OK") }
-                            }
-                        )
-                    }
-
                     when (currentScreen) {
                         "league_list" -> LeagueListScreen(
                             leagues = leagues,
                             onLeagueClick = { league ->
                                 selectedLeague = league
-                                if (league.type == LeagueType.UCL) {
-                                    currentStageLabel = "Group Stage"
-                                    uclStage = "GROUP"
-                                } else {
-                                    currentStageLabel = ""
-                                    uclStage = ""
-                                    classicKnockoutStage = ""
-                                }
-                                generatedFixtures = emptyList()
                                 currentScreen = "team_list"
                             },
                             onDeleteLeague = { l -> scope.launch { db.leagueDao().deleteLeague(l) } },
                             onAddLeagueClick = { currentScreen = "create_league" }
                         )
 
-                        "team_list" -> {
-                            Scaffold(
-                                bottomBar = {
-                                    Column {
-                                        if (selectedLeague?.type == LeagueType.UCL) {
-                                            // existing dropdown code for group
-                                        }
-
-                                        BottomAppBar {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceEvenly
-                                            ) {
-                                                // DRAW / MANUAL / RESULTS / TABLE buttons
-                                                TextButton(onClick = { /* existing DRAW logic */ }) { Text("DRAW") }
-                                                TextButton(onClick = { currentScreen = "match_entry" }) { Text("MANUAL") }
-                                                TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS") }
-                                                TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
-
-                                                // ✅ LIVE SCREEN CAST BUTTON
-                                                TextButton(onClick = {
-                                                    if (!liveCasting) {
-                                                        ScreenCastUtils.requestScreenCapture(this@MainActivity)
-                                                    } else {
-                                                        screenCastController?.stop()
-                                                        liveCasting = false
-                                                    }
-                                                }) {
-                                                    Text(if (liveCasting) "STOP LIVE" else "START LIVE")
-                                                }
-                                            }
-                                        }
-                                    }
+                        // 🏆 THIS WAS MISSING - The Create League Screen
+                        "create_league" -> CreateLeagueScreen(
+                            onLeagueCreated = { name, desc, isHomeAway, type ->
+                                scope.launch {
+                                    val newLeague = League(
+                                        name = name,
+                                        description = desc,
+                                        isHomeAndAway = isHomeAway,
+                                        type = type
+                                    )
+                                    db.leagueDao().insertLeague(newLeague)
+                                    currentScreen = "league_list"
                                 }
-                            ) {
-                                // existing team list content
-                            }
-                        }
+                            },
+                            onBack = { currentScreen = "league_list" }
+                        )
 
-                        // existing other screens ...
+                        "team_list" -> {
+                            // Placeholder for your Team List UI
+                            Text("Team List for ${selectedLeague?.name}")
+                        }
                     }
                 }
             }
@@ -197,7 +94,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         if (requestCode == ScreenCastUtils.SCREEN_CAPTURE_REQUEST_CODE && data != null) {
             if (resultCode == Activity.RESULT_OK) {
                 screenCastController?.start(resultCode, data)
@@ -208,8 +104,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (isCasting) {
-            screenCastController?.stop()
-        }
+        if (isCasting) screenCastController?.stop()
     }
 }
