@@ -1,17 +1,24 @@
 package com.duallive.app.utils
 
 import com.duallive.app.data.entity.Team
-import com.duallive.app.data.entity.Fixture
+import com.duallive.app.data.entity.Match
+
+data class Fixture(
+    val round: Int, 
+    val homeTeam: Team, 
+    val awayTeam: Team, 
+    val label: String = "",
+    val stage: String = "",
+    val matchNumber: Int = 0,
+    val isKnockout: Boolean = false
+)
 
 object FixtureGenerator {
     
-    // For Classic League - ROUND ROBIN
     fun generateRoundRobin(teams: List<Team>, homeAndAway: Boolean): List<Fixture> {
         if (teams.size < 2) return emptyList()
-        
         val teamList = teams.toMutableList()
-        val hasBye = teamList.size % 2 != 0
-        if (hasBye) {
+        if (teamList.size % 2 != 0) {
             teamList.add(Team(id = -1L, leagueId = -1L, name = "BYE"))
         }
         
@@ -46,10 +53,8 @@ object FixtureGenerator {
     
     fun generateUCLGroupFixtures(groupTeams: List<Team>, homeAndAway: Boolean): List<Fixture> {
         if (groupTeams.size < 2) return emptyList()
-        
         val teamList = groupTeams.toMutableList()
-        val hasBye = teamList.size % 2 != 0
-        if (hasBye) {
+        if (teamList.size % 2 != 0) {
             teamList.add(Team(id = -1L, leagueId = -1L, name = "BYE"))
         }
         
@@ -106,19 +111,17 @@ object FixtureGenerator {
         
         for (group in 'A'..'H') {
             val groupKey = group.toString()
-            val teams = groups[groupKey] ?: continue
-            if (teams.size >= 2) {
-                groupWinners.add(teams[0])
-                groupRunnersUp.add(teams[1])
+            val teamsInGroup = groups[groupKey] ?: continue
+            if (teamsInGroup.size >= 2) {
+                groupWinners.add(teamsInGroup[0])
+                groupRunnersUp.add(teamsInGroup[1])
             }
         }
         
         val shuffledRunnersUp = groupRunnersUp.shuffled().toMutableList()
-        
         for ((index, winner) in groupWinners.withIndex()) {
             var runnerUp: Team? = null
             var runnerUpIndex = -1
-            
             for (i in shuffledRunnersUp.indices) {
                 if (shuffledRunnersUp[i].groupName != winner.groupName) {
                     runnerUp = shuffledRunnersUp[i]
@@ -126,66 +129,47 @@ object FixtureGenerator {
                     break
                 }
             }
-            
             if (runnerUp != null) {
-                fixtures.add(Fixture(
-                    round = 1,
-                    homeTeam = winner,
-                    awayTeam = runnerUp,
-                    label = "Round of 16",
-                    stage = "RO16",
-                    matchNumber = index + 1,
-                    isKnockout = true
-                ))
+                fixtures.add(Fixture(1, winner, runnerUp, "Round of 16", "RO16", index + 1, true))
                 shuffledRunnersUp.removeAt(runnerUpIndex)
             }
         }
         return fixtures
     }
-    
+
     fun generateNextKnockoutRound(previousRoundWinners: List<Team>, stage: String): List<Fixture> {
         val fixtures = mutableListOf<Fixture>()
         val shuffled = previousRoundWinners.shuffled()
         for (i in 0 until (shuffled.size / 2) * 2 step 2) {
-            fixtures.add(Fixture(round = 1, homeTeam = shuffled[i], awayTeam = shuffled[i+1], label = stage, stage = stage, matchNumber = i/2 + 1, isKnockout = true))
+            fixtures.add(Fixture(1, shuffled[i], shuffled[i+1], stage, stage, i/2 + 1, true))
         }
         return fixtures
     }
-    
-    fun getWinnersFromKnockoutRound(matches: List<com.duallive.app.data.entity.Match>, teams: List<Team>, stage: String): List<Team> {
+
+    fun getWinnersFromKnockoutRound(matches: List<Match>, teams: List<Team>, stage: String): List<Team> {
         val winners = mutableListOf<Team>()
         val teamMap = teams.associateBy { it.id }
         for (match in matches.filter { it.stage == stage }) {
             val homeTeam = teamMap[match.homeTeamId]
             val awayTeam = teamMap[match.awayTeamId]
             if (homeTeam != null && awayTeam != null) {
-                when {
-                    match.homeScore > match.awayScore -> winners.add(homeTeam)
-                    match.awayScore > match.homeScore -> winners.add(awayTeam)
-                    else -> winners.add(homeTeam) 
-                }
+                if (match.homeScore >= match.awayScore) winners.add(homeTeam) else winners.add(awayTeam)
             }
         }
         return winners
     }
-    
-    fun isUCLGroupStageComplete(matches: List<com.duallive.app.data.entity.Match>): Boolean {
-        val groupMatches = matches.filter { it.stage == "GROUP" }
-        return groupMatches.size >= 192
-    }
-    
+
+    fun isUCLGroupStageComplete(matches: List<Match>): Boolean = matches.filter { it.stage == "GROUP" }.size >= 192
+
     fun getTopTeamsForUCLKnockout(teams: List<Team>, standings: Map<Team, Int>): Pair<List<Team>, List<Team>> {
-        val groupWinners = mutableListOf<Team>()
-        val groupRunnersUp = mutableListOf<Team>()
-        val groupedTeams = teams.groupBy { it.groupName }
-        
-        for ((groupName, groupTeams) in groupedTeams) {
-            if (groupName != null && groupName in "ABCDEFGH") {
-                val sortedTeams = groupTeams.sortedByDescending { standings[it] ?: 0 }
-                if (sortedTeams.isNotEmpty()) groupWinners.add(sortedTeams[0])
-                if (sortedTeams.size >= 2) groupRunnersUp.add(sortedTeams[1])
+        val winners = mutableListOf<Team>(); val runnersUp = mutableListOf<Team>()
+        teams.groupBy { it.groupName }.forEach { (name, gTeams) ->
+            if (name != null && name in "ABCDEFGH") {
+                val sorted = gTeams.sortedByDescending { standings[it] ?: 0 }
+                if (sorted.isNotEmpty()) winners.add(sorted[0])
+                if (sorted.size >= 2) runnersUp.add(sorted[1])
             }
         }
-        return Pair(groupWinners, groupRunnersUp)
+        return Pair(winners, runnersUp)
     }
 }

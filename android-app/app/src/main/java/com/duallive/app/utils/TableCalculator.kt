@@ -6,9 +6,8 @@ import com.duallive.app.data.entity.Team
 
 object TableCalculator {
     fun calculate(teams: List<Team>, matches: List<Match>): List<Standing> {
-        // Corrected: Mapping Long IDs to Standings and converting Long to Int for Standing if necessary
-        // Note: If your Standing.kt still uses Int for teamId, we use .toInt()
-        val standingsMap = teams.associate { it.id to Standing(teamId = it.id.toInt()) }.toMutableMap()
+        // Corrected: teamId is now Long, so we don't use .toInt()
+        val standingsMap = teams.associate { it.id to Standing(teamId = it.id) }.toMutableMap()
 
         for (match in matches) {
             val home = standingsMap[match.homeTeamId] ?: continue
@@ -59,7 +58,6 @@ object TableCalculator {
         if (teams.isEmpty()) return false
         val baseMatches = (teams.size * (teams.size - 1)) / 2
         val totalNeeded = if (isHomeAndAway) baseMatches * 2 else baseMatches
- 
         return matches.size >= totalNeeded && matches.size > 0
     }
 }
