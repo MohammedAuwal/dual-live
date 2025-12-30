@@ -6,7 +6,9 @@ import com.duallive.app.data.entity.Team
 
 object TableCalculator {
     fun calculate(teams: List<Team>, matches: List<Match>): List<Standing> {
-        val standingsMap = teams.associate { it.id to Standing(teamId = it.id) }.toMutableMap()
+        // Corrected: Mapping Long IDs to Standings and converting Long to Int for Standing if necessary
+        // Note: If your Standing.kt still uses Int for teamId, we use .toInt()
+        val standingsMap = teams.associate { it.id to Standing(teamId = it.id.toInt()) }.toMutableMap()
 
         for (match in matches) {
             val home = standingsMap[match.homeTeamId] ?: continue
@@ -48,32 +50,16 @@ object TableCalculator {
         )
     }
 
-    /**
-     * 🔥 NEW SAFE PROGRESSION LOGIC
-     * This works for both Groups and Knockouts.
-     * It checks if all matches currently in the DRAW have been played.
-     */
     fun isStageComplete(matchesInCurrentLeague: List<Match>, fixturesInCurrentDraw: Int): Boolean {
         if (fixturesInCurrentDraw == 0) return false
         return matchesInCurrentLeague.size >= fixturesInCurrentDraw
     }
 
-    // Keep this for backward compatibility with your existing Classic League checks
     fun isGroupStageComplete(teams: List<Team>, matches: List<Match>, isHomeAndAway: Boolean = false): Boolean {
         if (teams.isEmpty()) return false
         val baseMatches = (teams.size * (teams.size - 1)) / 2
         val totalNeeded = if (isHomeAndAway) baseMatches * 2 else baseMatches
+ 
         return matches.size >= totalNeeded && matches.size > 0
-    }
-
-    /**
-     * 🔥 NEW FUNCTION
-     * Get top teams for knockout stage based on current standings.
-     * Default is top 2 teams.
-     */
-    fun getTopTeamsForKnockout(teams: List<Team>, matches: List<Match>, topCount: Int = 2): List<Team> {
-        val standings = calculate(teams, matches)
-        val topTeamIds = standings.take(topCount).map { it.teamId }
-        return teams.filter { it.id in topTeamIds }
     }
 }

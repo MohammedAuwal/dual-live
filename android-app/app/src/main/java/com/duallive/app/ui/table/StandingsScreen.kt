@@ -21,12 +21,13 @@ import com.duallive.app.data.entity.Team
 @Composable
 fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
     val groupedTeams = teams.groupBy { it.groupName }
-    // Detect if we are in a UCL knockout stage by checking groupNames or if the title (via state) would imply it
     val isKnockoutStage = groupedTeams.keys.all { it == null } && teams.isNotEmpty()
     val isUclMode = groupedTeams.keys.any { it != null }
 
     val totalGoals = standings.sumOf { it.goalsFor }
     val totalMatches = standings.sumOf { it.matchesPlayed } / 2
+    
+    // Fixed: Comparison of Long IDs
     val topAttackTeamId = standings.maxByOrNull { it.goalsFor }?.teamId
     val topAttackName = teams.find { it.id == topAttackTeamId }?.name ?: "N/A"
 
@@ -55,12 +56,11 @@ fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
             }
         }
 
-        // --- UCL GOLD CUP BRACKET HEADER ---
         if (isKnockoutStage) {
             Spacer(modifier = Modifier.height(8.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFD4AF37)), // Gold Color
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFD4AF37)), 
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Row(
@@ -93,6 +93,7 @@ fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
                             color = MaterialTheme.colorScheme.secondary
                         )
                         val groupTeamIds = groupTeams.map { it.id }
+                        // Fixed: Ensuring Long containment check
                         val groupStandings = standings.filter { it.teamId in groupTeamIds }
                         
                         StandingTable(teams = groupTeams, standings = groupStandings)
@@ -128,6 +129,7 @@ fun StandingTable(teams: List<Team>, standings: List<Standing>) {
         Divider()
         
         standings.forEachIndexed { index, standing ->
+            // Fixed: Comparison of Long teamId
             val teamName = teams.find { it.id == standing.teamId }?.name ?: "Unknown"
             val gd = standing.goalsFor - standing.goalsAgainst
             

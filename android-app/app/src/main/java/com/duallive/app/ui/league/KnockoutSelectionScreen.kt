@@ -21,7 +21,6 @@ fun KnockoutSelectionScreen(
     onBack: () -> Unit,
     onConfirmKnockouts: (List<Team>, String) -> Unit
 ) {
-    // 1. DYNAMIC SUGGESTION LOGIC
     val suggestedTeams = remember(standings, teams) {
         val grouped = teams.groupBy { it.groupName }
         val isComingFromGroups = grouped.keys.any { it != null }
@@ -29,17 +28,20 @@ fun KnockoutSelectionScreen(
         if (isComingFromGroups) {
             val winners = mutableListOf<Team>()
             grouped.forEach { (_, groupTeams) ->
-                val ids = groupTeams.map { it.id }
-                val topTwo = standings.filter { it.teamId in ids }
+                val ids = groupTeams.map { it.id } // Now List<Long>
+                val topTwo = standings.filter { s -> ids.contains(s.teamId.toLong()) }
                     .sortedWith(compareByDescending<Standing> { it.points }.thenByDescending { it.goalsFor - it.goalsAgainst })
                     .take(2)
-                winners.addAll(teams.filter { t -> topTwo.any { it.teamId == t.id } })
+                
+                // Fixed: Explicitly finding teams using Long IDs
+                topTwo.forEach { topStanding ->
+                    teams.find { it.id == topStanding.teamId.toLong() }?.let { winners.add(it) }
+                }
             }
             winners
         } else {
-            // Knockout Logic: Pick teams that have a Win in this stage
             teams.filter { t -> 
-                val s = standings.find { it.teamId == t.id }
+                val s = standings.find { it.teamId.toLong() == t.id }
                 (s?.wins ?: 0) > 0 
             }
         }
@@ -47,7 +49,6 @@ fun KnockoutSelectionScreen(
 
     val selectedTeams = remember { mutableStateListOf<Team>().apply { addAll(suggestedTeams) } }
     
-    // 2. STAGE LABELING FIX
     val nextStageName = when (teams.size) {
         16 -> "Quarter-Finals"
         8 -> "Semi-Finals"
@@ -77,7 +78,7 @@ fun KnockoutSelectionScreen(
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(teams.sortedByDescending { t -> selectedTeams.contains(t) }) { team ->
                     val isSelected = selectedTeams.contains(team)
-                    val s = standings.find { it.teamId == team.id }
+                    val s = standings.find { it.teamId.toLong() == team.id }
                     
                     ListItem(
                         headlineContent = { Text(team.name) },
