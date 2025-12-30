@@ -55,10 +55,6 @@ object TableCalculator {
      */
     fun isStageComplete(matchesInCurrentLeague: List<Match>, fixturesInCurrentDraw: Int): Boolean {
         if (fixturesInCurrentDraw == 0) return false
-        
-        // Count only matches that belong to the current knockout stage/draw
-        // For simplicity in this logic, we check if the results list is at least 
-        // as long as the current draw list.
         return matchesInCurrentLeague.size >= fixturesInCurrentDraw
     }
 
@@ -68,5 +64,16 @@ object TableCalculator {
         val baseMatches = (teams.size * (teams.size - 1)) / 2
         val totalNeeded = if (isHomeAndAway) baseMatches * 2 else baseMatches
         return matches.size >= totalNeeded && matches.size > 0
+    }
+
+    /**
+     * 🔥 NEW FUNCTION
+     * Get top teams for knockout stage based on current standings.
+     * Default is top 2 teams.
+     */
+    fun getTopTeamsForKnockout(teams: List<Team>, matches: List<Match>, topCount: Int = 2): List<Team> {
+        val standings = calculate(teams, matches)
+        val topTeamIds = standings.take(topCount).map { it.teamId }
+        return teams.filter { it.id in topTeamIds }
     }
 }
