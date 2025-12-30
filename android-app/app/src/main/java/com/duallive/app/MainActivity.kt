@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             
+            // Harmonized state collection using Long IDs
             val teams by produceState<List<Team>>(initialValue = emptyList(), selectedLeague) {
                 selectedLeague?.let {
                     db.teamDao().getTeamsByLeague(it.id.toLong()).collect { value = it }
