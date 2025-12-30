@@ -37,12 +37,11 @@ class MainActivity : ComponentActivity() {
             var winnerName by remember { mutableStateOf<String?>(null) }
 
             // For match display
-            var homeTeamId by remember { mutableStateOf<Int?>(null) }
-            var awayTeamId by remember { mutableStateOf<Int?>(null) }
             var homeName by remember { mutableStateOf("") }
             var awayName by remember { mutableStateOf("") }
             var homeScore by remember { mutableStateOf(0) }
             var awayScore by remember { mutableStateOf(0) }
+            var selectedMatch by remember { mutableStateOf<Match?>(null) }
             var selectedFixture by remember { mutableStateOf<Fixture?>(null) }
 
             // For UCL
@@ -65,15 +64,18 @@ class MainActivity : ComponentActivity() {
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             
+            // Convert Int league ID to Long for DAO
             val teams by produceState<List<Team>>(initialValue = emptyList(), selectedLeague) {
                 selectedLeague?.let {
-                    db.teamDao().getTeamsByLeague(it.id).collect { value = it }
+                    val leagueIdLong = it.id.toLong()
+                    db.teamDao().getTeamsByLeague(leagueIdLong).collect { value = it }
                 }
             }
 
             val matches by produceState<List<Match>>(initialValue = emptyList(), selectedLeague) {
                 selectedLeague?.let {
-                    db.matchDao().getMatchesByLeague(it.id).collect { value = it }
+                    val leagueIdLong = it.id.toLong()
+                    db.matchDao().getMatchesByLeague(leagueIdLong).collect { value = it }
                 }
             }
 
@@ -390,25 +392,45 @@ class MainActivity : ComponentActivity() {
                         }
 
                         "fixture_list" -> {
-                            val teamMap = teams.associateBy { it.id }
+                            // Use your actual FixtureListScreen with correct parameters
                             FixtureListScreen(
                                 fixtures = generatedFixtures,
-                                onBack = { currentScreen = "team_list" },
-                                onFixtureClick = { fixture ->
-                                    homeTeamId = fixture.homeTeam.id
-                                    awayTeamId = fixture.awayTeam.id
-                                    homeName = fixture.homeTeam.name
-                                    awayName = fixture.awayTeam.name
+                                matches = matches,
+                                teams = teams,
+                                onMatchSelect = { homeTeam: Team, awayTeam: Team ->
+                                    // Set up for match display
+                                    homeName = homeTeam.name
+                                    awayName = awayTeam.name
                                     homeScore = 0
                                     awayScore = 0
-                                    selectedFixture = fixture
+                                    
+                                    // Find existing match if it exists
+                                    val existingMatch = matches.find { match ->
+                                        val matchHomeTeam = teams.find { it.id == match.homeTeamId }
+                                        val matchAwayTeam = teams.find { it.id == match.awayTeamId }
+                                        matchHomeTeam?.name == homeTeam.name && matchAwayTeam?.name == awayTeam.name
+                                    }
+                                    
+                                    if (existingMatch != null) {
+                                        selectedMatch = existingMatch
+                                        homeScore = existingMatch.homeScore
+                                        awayScore = existingMatch.awayScore
+                                    } else {
+                                        selectedMatch = null
+                                        // Find the fixture for stage info
+                                        selectedFixture = generatedFixtures.find { 
+                                            it.homeTeam.name == homeTeam.name && it.awayTeam.name == awayTeam.name 
+                                        }
+                                    }
+                                    
                                     currentScreen = "live_display"
-                                }
+                                },
+                                onBack = { currentScreen = "team_list" }
                             )
                         }
 
                         "live_display" -> {
-                            val teamMap = teams.associateBy { it.id }
+                            // Assuming MatchDisplayScreen has these parameters
                             MatchDisplayScreen(
                                 homeName = homeName,
                                 awayName = awayName,
@@ -419,30 +441,43 @@ class MainActivity : ComponentActivity() {
                                 onSaveAndClose = {
                                     scope.launch {
                                         selectedLeague?.let { league ->
-                                            selectedFixture?.let { fixture ->
-                                                val stage = if (league.type == LeagueType.UCL) {
-                                                    when (uclStage) {
-                                                        "RO16" -> "RO16"
-                                                        "QF" -> "QF"
-                                                        "SF" -> "SF"
-                                                        "FINAL" -> "FINAL"
-                                                        else -> "GROUP"
-                                                    }
-                                                } else {
-                                                    if (fixture.isKnockout) "KNOCKOUT" else ""
-                                                }
-                                                
-                                                db.matchDao().insertMatch(
-                                                    Match(
-                                                        leagueId = league.id,
-                                                        homeTeamId = fixture.homeTeam.id,
-                                                        awayTeamId = fixture.awayTeam.id,
-                                                        homeScore = homeScore,
-                                                        awayScore = awayScore,
-                                                        stage = stage,
-                                                        isKnockout = fixture.isKnockout
-                                                    )
+                                            if (selectedMatch != null) {
+                                                // Update existing match
+                                                val updatedMatch = selectedMatch!!.copy(
+                                                    homeScore = homeScore,
+                                                    awayScore = awayScore
                                                 )
+                                                db.matchDao().insertMatch(updatedMatch)
+                                            } else {
+                                                // Create new match
+                                                val homeTeam = teams.find { it.name == homeName }
+                                                val awayTeam = teams.find { it.name == awayName }
+                                                
+                                                if (homeTeam != null && awayTeam != null) {
+                                                    val stage = if (league.type == LeagueType.UCL) {
+                                                        when (uclStage) {
+                                                            "RO16" -> "RO16"
+                                                            "QF" -> "QF"
+                                                            "SF" -> "SF"
+                                                            "FINAL" -> "FINAL"
+                                                            else -> "GROUP"
+                                                        }
+                                                    } else {
+                                                        if (selectedFixture?.isKnockout == true) "KNOCKOUT" else ""
+                                                    }
+                                                    
+                                                    db.matchDao().insertMatch(
+                                                        Match(
+                                                            leagueId = league.id,
+                                                            homeTeamId = homeTeam.id,
+                                                            awayTeamId = awayTeam.id,
+                                                            homeScore = homeScore,
+                                                            awayScore = awayScore,
+                                                            stage = stage,
+                                                            isKnockout = selectedFixture?.isKnockout ?: false
+                                                        )
+                                                    )
+                                                }
                                             }
                                         }
                                         currentScreen = "fixture_list"
@@ -453,32 +488,19 @@ class MainActivity : ComponentActivity() {
                         }
 
                         "match_history" -> {
-                            val teamMap = teams.associateBy { it.id }
+                            // Assuming MatchHistoryScreen has these parameters
                             MatchHistoryScreen(
                                 matches = matches,
                                 teams = teams,
-                                onBack = { currentScreen = "team_list" },
-                                onDeleteMatch = { match ->
-                                    scope.launch {
-                                        db.matchDao().deleteMatch(match)
-                                    }
-                                },
-                                onUpdateMatch = { match, newHomeScore, newAwayScore ->
-                                    scope.launch {
-                                        val updatedMatch = match.copy(
-                                            homeScore = newHomeScore,
-                                            awayScore = newAwayScore
-                                        )
-                                        db.matchDao().insertMatch(updatedMatch)
-                                    }
-                                }
+                                onBack = { currentScreen = "team_list" }
                             )
                         }
 
                         "match_entry" -> {
-                            val teamMap = teams.associateBy { it.id }
+                            // Assuming MatchEntryScreen has these parameters
                             MatchEntryScreen(
                                 teams = teams,
+                                onBack = { currentScreen = "team_list" },
                                 onSave = { homeTeam: Team, awayTeam: Team, homeScore: Int, awayScore: Int ->
                                     scope.launch {
                                         selectedLeague?.let { league ->
@@ -496,32 +518,37 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                     }
-                                },
+                                }
+                            )
+                        }
+
+                        "standings" -> {
+                            // Assuming StandingsScreen has these parameters
+                            StandingsScreen(
+                                standings = standings,
                                 onBack = { currentScreen = "team_list" }
                             )
                         }
 
-                        "standings" -> StandingsScreen(
-                            standings = standings,
-                            onBack = { currentScreen = "team_list" }
-                        )
-
-                        "knockout_select" -> KnockoutSelectionScreen(
-                            teams = teams,
-                            onProceed = { selectedTeams: List<Team> ->
-                                scope.launch {
-                                    generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, "Knockout")
-                                    classicKnockoutStage = "Knockout"
-                                    currentStageLabel = "Knockout Stage"
-                                    currentScreen = "fixture_list"
+                        "knockout_select" -> {
+                            // Assuming KnockoutSelectionScreen has these parameters
+                            KnockoutSelectionScreen(
+                                teams = teams,
+                                onBack = { 
+                                    classicKnockoutStage = ""
+                                    currentStageLabel = ""
+                                    currentScreen = "team_list" 
+                                },
+                                onProceed = { selectedTeams: List<Team> ->
+                                    scope.launch {
+                                        generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, "Knockout")
+                                        classicKnockoutStage = "Knockout"
+                                        currentStageLabel = "Knockout Stage"
+                                        currentScreen = "fixture_list"
+                                    }
                                 }
-                            },
-                            onBack = { 
-                                classicKnockoutStage = ""
-                                currentStageLabel = ""
-                                currentScreen = "team_list" 
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
