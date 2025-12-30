@@ -41,9 +41,9 @@ class MainActivity : ComponentActivity() {
             var awayScore by remember { mutableStateOf(0) }
 
             var currentStageLabel by rememberSaveable { mutableStateOf("") }
-            // Fixed: This keeps the DRAW list alive for the current league ID
             var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
 
+            // Back button handling for better UX
             BackHandler(enabled = currentScreen != "league_list") {
                 when (currentScreen) {
                     "team_list", "create_league" -> currentScreen = "league_list"
@@ -58,11 +58,11 @@ class MainActivity : ComponentActivity() {
             val matches by if (selectedLeague != null) db.matchDao().getMatchesByLeague(selectedLeague!!.id).collectAsState(initial = emptyList()) else remember { mutableStateOf(emptyList()) }
 
             val standings = remember(teams, matches) { TableCalculator.calculate(teams, matches) }
-            val isGroupStageComplete = if (teams.isEmpty()) false else matches.size >= (teams.size * (teams.size - 1) / 2)
 
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
 
+                    // Winner Celebration Dialog
                     winnerName?.let { name ->
                         AlertDialog(
                             onDismissRequest = { winnerName = null },
@@ -87,7 +87,7 @@ class MainActivity : ComponentActivity() {
                                 generatedFixtures = emptyList()
                                 currentScreen = "team_list"
                             },
-                            onDeleteLeague = { league -> MainScope().launch { db.leagueDao().deleteLeague(league) } },
+                            onDeleteLeague = { l -> MainScope().launch { db.leagueDao().deleteLeague(l) } },
                             onAddLeagueClick = { currentScreen = "create_league" }
                         )
 
@@ -107,11 +107,7 @@ class MainActivity : ComponentActivity() {
                                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                             TextButton(onClick = {
                                                 if (generatedFixtures.isEmpty()) {
-                                                    generatedFixtures = if (selectedLeague?.type == LeagueType.CLASSIC) {
-                                                        FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
-                                                    } else {
-                                                        FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
-                                                    }
+                                                    generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
                                                 }
                                                 currentScreen = "fixture_list"
                                             }) { Text("DRAW") }
@@ -121,7 +117,7 @@ class MainActivity : ComponentActivity() {
                                             TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
                                             
                                             if (selectedLeague?.type == LeagueType.UCL) {
-                                                TextButton(onClick = { currentScreen = "knockout_select" }) { Text("KNOCKOUT") }
+                                                TextButton(onClick = { currentScreen = "knockout_select" }) { Text("PROCEED") }
                                             }
                                         }
                                     }
@@ -156,7 +152,13 @@ class MainActivity : ComponentActivity() {
                             fixtures = generatedFixtures,
                             matches = matches,
                             teams = teams,
-                            onMatchSelect = { h, a -> homeTeamForDisplay = h; awayTeamForDisplay = a; homeScore = 0; awayScore = 0; currentScreen = "live_display" },
+                            onMatchSelect = { h, a -> 
+                                homeTeamForDisplay = h
+                                awayTeamForDisplay = a
+                                homeScore = 0
+                                awayScore = 0
+                                currentScreen = "live_display" 
+                            },
                             onBack = { currentScreen = "team_list" }
                         )
 
@@ -165,9 +167,13 @@ class MainActivity : ComponentActivity() {
                             standings = standings,
                             onBack = { currentScreen = "team_list" },
                             onConfirmKnockouts = { selectedTeams, stage ->
-                                generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, stage)
-                                currentStageLabel = stage
-                                currentScreen = "fixture_list"
+                                if (stage == "Champion") {
+                                    winnerName = selectedTeams.firstOrNull()?.name ?: "Unknown"
+                                } else {
+                                    generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, stage)
+                                    currentStageLabel = stage
+                                    currentScreen = "fixture_list"
+                                }
                             }
                         )
 
@@ -178,6 +184,7 @@ class MainActivity : ComponentActivity() {
                             awayName = awayTeamForDisplay?.name ?: "",
                             homeScore = homeScore,
                             awayScore = awayScore,
+                            stageLabel = currentStageLabel,
                             onUpdateHome = { homeScore += it },
                             onUpdateAway = { awayScore += it },
                             onSaveAndClose = {

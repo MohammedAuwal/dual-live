@@ -27,7 +27,6 @@ fun KnockoutSelectionScreen(
         val isComingFromGroups = grouped.keys.any { it != null }
 
         if (isComingFromGroups) {
-            // Pick top 2 from each group based on points then Goal Difference
             val winners = mutableListOf<Team>()
             grouped.forEach { (_, groupTeams) ->
                 val ids = groupTeams.map { it.id }
@@ -38,7 +37,7 @@ fun KnockoutSelectionScreen(
             }
             winners
         } else {
-            // In knockout mode, suggest teams that won their last match
+            // Knockout Logic: Pick teams that have a Win in this stage
             teams.filter { t -> 
                 val s = standings.find { it.teamId == t.id }
                 (s?.wins ?: 0) > 0 
@@ -48,12 +47,13 @@ fun KnockoutSelectionScreen(
 
     val selectedTeams = remember { mutableStateListOf<Team>().apply { addAll(suggestedTeams) } }
     
-    // 2. SMART STAGE LABELING
-    val stageName = when {
-        selectedTeams.size > 4 && selectedTeams.size <= 8 -> "Quarter-Finals"
-        selectedTeams.size > 2 && selectedTeams.size <= 4 -> "Semi-Finals"
-        selectedTeams.size == 2 -> "Final"
-        else -> "Knockout Round"
+    // 2. STAGE LABELING FIX
+    val nextStageName = when (teams.size) {
+        16 -> "Quarter-Finals"
+        8 -> "Semi-Finals"
+        4 -> "Final"
+        2 -> "Champion"
+        else -> "Next Round"
     }
 
     Scaffold(
@@ -68,8 +68,8 @@ fun KnockoutSelectionScreen(
                     Text("🏆", style = MaterialTheme.typography.headlineSmall)
                     Spacer(Modifier.width(8.dp))
                     Column {
-                        Text("Next Stage: $stageName", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("Confirm the winners to proceed", style = MaterialTheme.typography.bodySmall)
+                        Text("Current Stage: ${if(teams.any { it.groupName != null }) "Groups" else "Knockout"}", style = MaterialTheme.typography.bodySmall)
+                        Text("Proceed to: $nextStageName", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -82,17 +82,14 @@ fun KnockoutSelectionScreen(
                     ListItem(
                         headlineContent = { Text(team.name) },
                         supportingContent = { 
-                            Text("P: ${s?.matchesPlayed ?: 0} | W: ${s?.wins ?: 0} | GD: ${(s?.goalsFor ?: 0) - (s?.goalsAgainst ?: 0)}") 
+                            Text("Wins: ${s?.wins ?: 0} | GD: ${(s?.goalsFor ?: 0) - (s?.goalsAgainst ?: 0)}") 
                         },
                         trailingContent = {
                             Checkbox(
                                 checked = isSelected,
                                 onCheckedChange = { checked ->
-                                    if (checked) {
-                                        if (!selectedTeams.contains(team)) selectedTeams.add(team)
-                                    } else {
-                                        selectedTeams.remove(team)
-                                    }
+                                    if (checked) { if (!selectedTeams.contains(team)) selectedTeams.add(team) }
+                                    else { selectedTeams.remove(team) }
                                 }
                             )
                         },
@@ -105,17 +102,14 @@ fun KnockoutSelectionScreen(
             }
 
             Button(
-                onClick = { onConfirmKnockouts(selectedTeams.toList(), stageName) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = selectedTeams.size >= 2 && selectedTeams.size % 2 == 0
+                onClick = { onConfirmKnockouts(selectedTeams.toList(), nextStageName) },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                enabled = selectedTeams.size > 0 && (selectedTeams.size % 2 == 0 || nextStageName == "Champion")
             ) {
-                Text("Confirm $stageName Draw")
+                Text(if (nextStageName == "Champion") "DECLARE CHAMPION" else "CREATE $nextStageName DRAW")
             }
             
-            TextButton(
-                onClick = onBack, 
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            TextButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
                 Text("Back to Standings")
             }
         }

@@ -44,7 +44,7 @@ object TableCalculator {
             standingsMap[match.awayTeamId] = a
         }
 
-        // 3. Sorting: Points -> GD -> GF
+        // 3. Sorting: Points -> Goal Difference -> Goals For
         return standingsMap.values.toList().sortedWith(
             compareByDescending<Standing> { it.points }
                 .thenByDescending { it.goalsFor - it.goalsAgainst }
@@ -52,10 +52,18 @@ object TableCalculator {
         )
     }
 
-    // Helper for UCL to check if all teams have played enough matches
-    fun isGroupStageComplete(teams: List<Team>, matches: List<Match>): Boolean {
+    /**
+     * Safety Check for UCL:
+     * Calculates if all required matches have been played.
+     */
+    fun isGroupStageComplete(teams: List<Team>, matches: List<Match>, isHomeAndAway: Boolean = false): Boolean {
         if (teams.isEmpty()) return false
-        val totalExpectedMatches = (teams.size * (teams.size - 1)) / 2
-        return matches.size >= totalExpectedMatches
+        
+        // Group size usually 4. Total games = (N * (N-1) / 2)
+        // If Home & Away, multiply by 2.
+        val baseMatches = (teams.size * (teams.size - 1)) / 2
+        val totalNeeded = if (isHomeAndAway) baseMatches * 2 else baseMatches
+        
+        return matches.size >= totalNeeded && matches.size > 0
     }
 }
