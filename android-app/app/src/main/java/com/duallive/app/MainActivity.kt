@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val db = AppDatabase.getDatabase(this)
+        val scope = MainScope()
 
         setContent {
             var currentScreen by rememberSaveable { mutableStateOf("league_list") }
@@ -39,10 +40,16 @@ class MainActivity : ComponentActivity() {
             var awayTeamForDisplay by remember { mutableStateOf<Team?>(null) }
             var homeScore by remember { mutableStateOf(0) }
             var awayScore by remember { mutableStateOf(0) }
+            var selectedFixture by remember { mutableStateOf<Fixture?>(null) }
 
-            var currentStageLabel by rememberSaveable { mutableStateOf("") }
+            // For UCL
+            var currentStageLabel by rememberSaveable { mutableStateOf("Group Stage") }
             var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
             var selectedGroup by rememberSaveable { mutableStateOf("A") }
+            var uclStage by rememberSaveable { mutableStateOf("GROUP") }
+            
+            // For Classic League knockout
+            var classicKnockoutStage by rememberSaveable { mutableStateOf("") }
 
             BackHandler(enabled = currentScreen != "league_list") {
                 when (currentScreen) {
@@ -57,17 +64,103 @@ class MainActivity : ComponentActivity() {
             
             val teams by produceState<List<Team>>(initialValue = emptyList(), selectedLeague) {
                 selectedLeague?.let {
-                    db.teamDao().getTeamsByLeague(it.id.toLong()).collect { value = it }
+                    db.teamDao().getTeamsByLeague(it.id).collect { value = it }
                 }
             }
 
             val matches by produceState<List<Match>>(initialValue = emptyList(), selectedLeague) {
                 selectedLeague?.let {
-                    db.matchDao().getMatchesByLeague(it.id.toLong()).collect { value = it }
+                    db.matchDao().getMatchesByLeague(it.id).collect { value = it }
                 }
             }
 
             val standings = remember(teams, matches) { TableCalculator.calculate(teams, matches) }
+
+            // AUTOMATIC UCL PROGRESSION
+            LaunchedEffect(matches, selectedLeague, uclStage, teams) {
+                if (selectedLeague?.type == LeagueType.UCL && matches.isNotEmpty() && teams.isNotEmpty()) {
+                    val completedMatches = matches.filter { it.homeScore >= 0 && it.awayScore >= 0 }
+                    
+                    when (uclStage) {
+                        "GROUP" -> {
+                            if (FixtureGenerator.isUCLGroupStageComplete(completedMatches)) {
+                                scope.launch {
+                                    val groups = teams.groupBy { it.groupName }
+                                    val ro16Fixtures = FixtureGenerator.generateUCLRoundOf16Draw(groups)
+                                    
+                                    generatedFixtures = ro16Fixtures
+                                    uclStage = "RO16"
+                                    currentStageLabel = "Round of 16"
+                                    currentScreen = "fixture_list"
+                                }
+                            }
+                        }
+                        "RO16" -> {
+                            val ro16Matches = completedMatches.filter { it.stage == "RO16" }
+                            if (ro16Matches.size >= 8 && ro16Matches.all { it.homeScore >= 0 && it.awayScore >= 0 }) {
+                                val winners = FixtureGenerator.getWinnersFromKnockoutRound(ro16Matches, teams, "RO16")
+                                if (winners.size == 8) {
+                                    scope.launch {
+                                        val qfFixtures = FixtureGenerator.generateNextKnockoutRound(winners, "QF")
+                                        generatedFixtures = qfFixtures
+                                        uclStage = "QF"
+                                        currentStageLabel = "Quarter-Final"
+                                        currentScreen = "fixture_list"
+                                    }
+                                }
+                            }
+                        }
+                        "QF" -> {
+                            val qfMatches = completedMatches.filter { it.stage == "QF" }
+                            if (qfMatches.size >= 4 && qfMatches.all { it.homeScore >= 0 && it.awayScore >= 0 }) {
+                                val winners = FixtureGenerator.getWinnersFromKnockoutRound(qfMatches, teams, "QF")
+                                if (winners.size == 4) {
+                                    scope.launch {
+                                        val sfFixtures = FixtureGenerator.generateNextKnockoutRound(winners, "SF")
+                                        generatedFixtures = sfFixtures
+                                        uclStage = "SF"
+                                        currentStageLabel = "Semi-Final"
+                                        currentScreen = "fixture_list"
+                                    }
+                                }
+                            }
+                        }
+                        "SF" -> {
+                            val sfMatches = completedMatches.filter { it.stage == "SF" }
+                            if (sfMatches.size >= 2 && sfMatches.all { it.homeScore >= 0 && it.awayScore >= 0 }) {
+                                val winners = FixtureGenerator.getWinnersFromKnockoutRound(sfMatches, teams, "SF")
+                                if (winners.size == 2) {
+                                    scope.launch {
+                                        val finalFixtures = FixtureGenerator.generateNextKnockoutRound(winners, "FINAL")
+                                        generatedFixtures = finalFixtures
+                                        uclStage = "FINAL"
+                                        currentStageLabel = "Final"
+                                        currentScreen = "fixture_list"
+                                    }
+                                }
+                            }
+                        }
+                        "FINAL" -> {
+                            val finalMatches = completedMatches.filter { it.stage == "FINAL" }
+                            if (finalMatches.isNotEmpty() && finalMatches.all { it.homeScore >= 0 && it.awayScore >= 0 }) {
+                                val finalMatch = finalMatches.first()
+                                val homeTeam = teams.find { it.id == finalMatch.homeTeamId }
+                                val awayTeam = teams.find { it.id == finalMatch.awayTeamId }
+                                
+                                val champion = if (finalMatch.homeScore > finalMatch.awayScore) {
+                                    homeTeam
+                                } else {
+                                    awayTeam
+                                }
+                                champion?.let {
+                                    winnerName = it.name
+                                    uclStage = "COMPLETED"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -76,11 +169,22 @@ class MainActivity : ComponentActivity() {
                         AlertDialog(
                             onDismissRequest = { winnerName = null },
                             title = { Text("🏆 CHAMPION 🏆", fontWeight = FontWeight.Bold) },
-                            text = { Text("$name has won the competition!") },
+                            text = { 
+                                Text(
+                                    if (selectedLeague?.type == LeagueType.UCL) 
+                                        "$name has won the UEFA Champions League!" 
+                                    else 
+                                        "$name has won the league!"
+                                )
+                            },
                             confirmButton = {
                                 Button(onClick = {
                                     winnerName = null
-                                    currentStageLabel = ""
+                                    if (selectedLeague?.type == LeagueType.UCL) {
+                                        currentStageLabel = "Group Stage"
+                                        uclStage = "GROUP"
+                                    }
+                                    generatedFixtures = emptyList()
                                     currentScreen = "league_list"
                                 }) { Text("OK") }
                             }
@@ -92,17 +196,24 @@ class MainActivity : ComponentActivity() {
                             leagues = leagues,
                             onLeagueClick = { league ->
                                 selectedLeague = league
-                                currentStageLabel = if (league.name.contains("-")) league.name.substringAfter("- ").trim() else ""
+                                if (league.type == LeagueType.UCL) {
+                                    currentStageLabel = "Group Stage"
+                                    uclStage = "GROUP"
+                                } else {
+                                    currentStageLabel = ""
+                                    uclStage = ""
+                                    classicKnockoutStage = ""
+                                }
                                 generatedFixtures = emptyList()
                                 currentScreen = "team_list"
                             },
-                            onDeleteLeague = { l -> MainScope().launch { db.leagueDao().deleteLeague(l) } },
+                            onDeleteLeague = { l -> scope.launch { db.leagueDao().deleteLeague(l) } },
                             onAddLeagueClick = { currentScreen = "create_league" }
                         )
 
                         "create_league" -> CreateLeagueScreen(
                             onSave = { name, desc, homeAway, leagueType ->
-                                MainScope().launch {
+                                scope.launch {
                                     db.leagueDao().insertLeague(League(name = name, description = desc, isHomeAndAway = homeAway, type = leagueType))
                                     currentScreen = "league_list"
                                 }
@@ -118,7 +229,7 @@ class MainActivity : ComponentActivity() {
                                             val groupOptions = listOf("A", "B", "C", "D", "E", "F", "G", "H")
                                             Box(modifier = Modifier.padding(8.dp)) {
                                                 TextButton(onClick = { expanded = true }) {
-                                                    Text("Group: $selectedGroup")
+                                                    Text("Group: $selectedGroup • Stage: $currentStageLabel")
                                                 }
                                                 DropdownMenu(
                                                     expanded = expanded,
@@ -139,44 +250,108 @@ class MainActivity : ComponentActivity() {
 
                                         BottomAppBar {
                                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                                // DRAW BUTTON
                                                 TextButton(onClick = {
-                                                    if (selectedLeague?.type == LeagueType.UCL) {
-                                                        val groups = teams.groupBy { it.groupName }
-                                                        val groupTeams = groups[selectedGroup] ?: emptyList()
-                                                        if (groupTeams.isNotEmpty()) {
-                                                            generatedFixtures = FixtureGenerator.generateRoundRobin(groupTeams, selectedLeague?.isHomeAndAway ?: false)
+                                                    selectedLeague?.let { league ->
+                                                        if (league.type == LeagueType.UCL) {
+                                                            // UCL League
+                                                            if (uclStage == "GROUP") {
+                                                                val groups = teams.groupBy { it.groupName }
+                                                                val groupTeams = groups[selectedGroup] ?: emptyList()
+                                                                if (groupTeams.isNotEmpty()) {
+                                                                    generatedFixtures = FixtureGenerator.generateUCLGroupFixtures(
+                                                                        groupTeams, 
+                                                                        league.isHomeAndAway
+                                                                    )
+                                                                }
+                                                            } else {
+                                                                // UCL Knockout - regenerate from existing matches
+                                                                if (generatedFixtures.isEmpty()) {
+                                                                    generatedFixtures = generateFixturesFromMatches(
+                                                                        matches.filter { it.stage == uclStage }, 
+                                                                        teams
+                                                                    )
+                                                                }
+                                                            }
+                                                        } else {
+                                                            // Classic League
+                                                            if (generatedFixtures.isEmpty()) {
+                                                                generatedFixtures = FixtureGenerator.generateRoundRobin(
+                                                                    teams, 
+                                                                    league.isHomeAndAway
+                                                                )
+                                                            }
                                                         }
-                                                    } else {
-                                                        if (generatedFixtures.isEmpty()) {
-                                                            generatedFixtures = FixtureGenerator.generateRoundRobin(teams, selectedLeague?.isHomeAndAway ?: false)
-                                                        }
+                                                        currentScreen = "fixture_list"
                                                     }
-                                                    currentScreen = "fixture_list"
                                                 }) { Text("DRAW") }
 
                                                 TextButton(onClick = { currentScreen = "match_entry" }) { Text("MANUAL") }
                                                 TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS") }
                                                 TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
 
-                                                if (selectedLeague?.type == LeagueType.UCL) {
-                                                    val canProceed = teams.isNotEmpty() && generatedFixtures.isNotEmpty()
+                                                // NEXT/PROCEED BUTTON (For UCL only)
+                                                if (selectedLeague?.type == LeagueType.UCL && uclStage != "COMPLETED") {
                                                     TextButton(
                                                         onClick = {
-                                                            MainScope().launch {
-                                                                val groups = teams.groupBy { it.groupName }
-                                                                val topTeams = groups.values.flatMap { groupList ->
-                                                                    TableCalculator.getTopTeamsForKnockout(groupList, matches)
-                                                                }
-                                                                if (topTeams.isNotEmpty()) {
-                                                                    db.matchDao().deleteMatchesByLeague(selectedLeague!!.id.toLong())
-                                                                    generatedFixtures = FixtureGenerator.generateKnockoutDraw(topTeams, nextStage(currentStageLabel))
-                                                                    currentStageLabel = nextStage(currentStageLabel)
-                                                                    currentScreen = "fixture_list"
+                                                            scope.launch {
+                                                                when (uclStage) {
+                                                                    "GROUP" -> {
+                                                                        val groups = teams.groupBy { it.groupName }
+                                                                        val ro16Fixtures = FixtureGenerator.generateUCLRoundOf16Draw(groups)
+                                                                        generatedFixtures = ro16Fixtures
+                                                                        uclStage = "RO16"
+                                                                        currentStageLabel = "Round of 16"
+                                                                        currentScreen = "fixture_list"
+                                                                    }
+                                                                    "RO16" -> {
+                                                                        val ro16Matches = matches.filter { it.stage == "RO16" }
+                                                                        val winners = FixtureGenerator.getWinnersFromKnockoutRound(ro16Matches, teams, "RO16")
+                                                                        if (winners.isNotEmpty()) {
+                                                                            val qfFixtures = FixtureGenerator.generateNextKnockoutRound(winners, "QF")
+                                                                            generatedFixtures = qfFixtures
+                                                                            uclStage = "QF"
+                                                                            currentStageLabel = "Quarter-Final"
+                                                                            currentScreen = "fixture_list"
+                                                                        }
+                                                                    }
+                                                                    "QF" -> {
+                                                                        val qfMatches = matches.filter { it.stage == "QF" }
+                                                                        val winners = FixtureGenerator.getWinnersFromKnockoutRound(qfMatches, teams, "QF")
+                                                                        if (winners.isNotEmpty()) {
+                                                                            val sfFixtures = FixtureGenerator.generateNextKnockoutRound(winners, "SF")
+                                                                            generatedFixtures = sfFixtures
+                                                                            uclStage = "SF"
+                                                                            currentStageLabel = "Semi-Final"
+                                                                            currentScreen = "fixture_list"
+                                                                        }
+                                                                    }
+                                                                    "SF" -> {
+                                                                        val sfMatches = matches.filter { it.stage == "SF" }
+                                                                        val winners = FixtureGenerator.getWinnersFromKnockoutRound(sfMatches, teams, "SF")
+                                                                        if (winners.isNotEmpty()) {
+                                                                            val finalFixtures = FixtureGenerator.generateNextKnockoutRound(winners, "FINAL")
+                                                                            generatedFixtures = finalFixtures
+                                                                            uclStage = "FINAL"
+                                                                            currentStageLabel = "Final"
+                                                                            currentScreen = "fixture_list"
+                                                                        }
+                                                                    }
                                                                 }
                                                             }
-                                                        },
-                                                        enabled = canProceed
-                                                    ) { Text("PROCEED") }
+                                                        }
+                                                    ) { Text("NEXT") }
+                                                }
+                                                
+                                                // Classic League knockout button
+                                                if (selectedLeague?.type == LeagueType.CLASSIC && classicKnockoutStage.isEmpty()) {
+                                                    TextButton(
+                                                        onClick = {
+                                                            classicKnockoutStage = "Knockout"
+                                                            currentStageLabel = "Knockout Stage"
+                                                            currentScreen = "knockout_select"
+                                                        }
+                                                    ) { Text("KNOCKOUT") }
                                                 }
                                             }
                                         }
@@ -185,12 +360,13 @@ class MainActivity : ComponentActivity() {
                             ) { padding ->
                                 Box(modifier = Modifier.padding(padding)) {
                                     TeamListScreen(
-                                        leagueName = if (currentStageLabel.isEmpty()) selectedLeague?.name ?: "" else "${selectedLeague?.name?.substringBefore(" -")} - $currentStageLabel",
+                                        leagueName = if (currentStageLabel.isEmpty()) selectedLeague?.name ?: "" 
+                                                    else "${selectedLeague?.name?.substringBefore(" -")} - $currentStageLabel",
                                         teams = teams,
                                         isUcl = selectedLeague?.type == LeagueType.UCL,
                                         onBack = { currentScreen = "league_list" },
                                         onAddTeamClick = { showAddTeamDialog = true },
-                                        onUpdateTeam = { updated -> MainScope().launch { db.teamDao().insertTeam(updated) } }
+                                        onUpdateTeam = { updated -> scope.launch { db.teamDao().insertTeam(updated) } }
                                     )
                                 }
                             }
@@ -198,7 +374,7 @@ class MainActivity : ComponentActivity() {
                                 AddTeamScreen(
                                     leagueType = selectedLeague?.type ?: LeagueType.CLASSIC,
                                     onSave = { names, group ->
-                                        MainScope().launch {
+                                        scope.launch {
                                             names.forEach { db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = it, groupName = group)) }
                                             showAddTeamDialog = false
                                         }
@@ -208,19 +384,139 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        // Other screens remain the same (fixture_list, knockout_select, live_display, match_history, match_entry)
+                        "fixture_list" -> FixtureListScreen(
+                            fixtures = generatedFixtures,
+                            onBack = { currentScreen = "team_list" },
+                            onFixtureClick = { fixture ->
+                                homeTeamForDisplay = fixture.homeTeam
+                                awayTeamForDisplay = fixture.awayTeam
+                                homeScore = 0
+                                awayScore = 0
+                                selectedFixture = fixture
+                                currentScreen = "live_display"
+                            }
+                        )
+
+                        "live_display" -> MatchDisplayScreen(
+                            homeTeam = homeTeamForDisplay,
+                            awayTeam = awayTeamForDisplay,
+                            homeScore = homeScore,
+                            awayScore = awayScore,
+                            onScoreUpdate = { h, a ->
+                                homeScore = h
+                                awayScore = a
+                            },
+                            onSave = {
+                                scope.launch {
+                                    selectedLeague?.let { league ->
+                                        selectedFixture?.let { fixture ->
+                                            val stage = if (league.type == LeagueType.UCL) {
+                                                when (uclStage) {
+                                                    "RO16" -> "RO16"
+                                                    "QF" -> "QF"
+                                                    "SF" -> "SF"
+                                                    "FINAL" -> "FINAL"
+                                                    else -> "GROUP"
+                                                }
+                                            } else {
+                                                if (fixture.isKnockout) "KNOCKOUT" else ""
+                                            }
+                                            
+                                            db.matchDao().insertMatch(
+                                                Match(
+                                                    leagueId = league.id,
+                                                    homeTeamId = fixture.homeTeam.id,
+                                                    awayTeamId = fixture.awayTeam.id,
+                                                    homeScore = homeScore,
+                                                    awayScore = awayScore,
+                                                    stage = stage,
+                                                    isKnockout = fixture.isKnockout
+                                                )
+                                            )
+                                        }
+                                    }
+                                    currentScreen = "fixture_list"
+                                }
+                            },
+                            onBack = { currentScreen = "fixture_list" }
+                        )
+
+                        "match_history" -> MatchHistoryScreen(
+                            matches = matches,
+                            teams = teams,
+                            onBack = { currentScreen = "team_list" }
+                        )
+
+                        "match_entry" -> MatchEntryScreen(
+                            teams = teams,
+                            onSave = { hTeam, aTeam, hScore, aScore ->
+                                scope.launch {
+                                    selectedLeague?.let { league ->
+                                        val stage = if (league.type == LeagueType.UCL) uclStage else ""
+                                        db.matchDao().insertMatch(
+                                            Match(
+                                                leagueId = league.id,
+                                                homeTeamId = hTeam.id,
+                                                awayTeamId = aTeam.id,
+                                                homeScore = hScore,
+                                                awayScore = aScore,
+                                                stage = stage,
+                                                isKnockout = (league.type == LeagueType.CLASSIC && classicKnockoutStage.isNotEmpty())
+                                            )
+                                        )
+                                    }
+                                }
+                            },
+                            onBack = { currentScreen = "team_list" }
+                        )
+
+                        "standings" -> StandingsScreen(
+                            standings = standings,
+                            onBack = { currentScreen = "team_list" }
+                        )
+
+                        "knockout_select" -> KnockoutSelectionScreen(
+                            teams = teams,
+                            onProceed = { selectedTeams ->
+                                scope.launch {
+                                    generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, "Knockout")
+                                    classicKnockoutStage = "Knockout"
+                                    currentStageLabel = "Knockout Stage"
+                                    currentScreen = "fixture_list"
+                                }
+                            },
+                            onBack = { 
+                                classicKnockoutStage = ""
+                                currentStageLabel = ""
+                                currentScreen = "team_list" 
+                            }
+                        )
                     }
                 }
             }
         }
     }
-
-    private fun nextStage(currentStage: String): String {
-        return when (currentStage) {
-            "Group Stage" -> "Quarter-Final"
-            "Quarter-Final" -> "Semi-Final"
-            "Semi-Final" -> "Final"
-            else -> "Champion"
+    
+    private fun generateFixturesFromMatches(matches: List<Match>, teams: List<Team>): List<Fixture> {
+        val teamMap = teams.associateBy { it.id }
+        val fixtures = mutableListOf<Fixture>()
+        
+        for (match in matches) {
+            val homeTeam = teamMap[match.homeTeamId]
+            val awayTeam = teamMap[match.awayTeamId]
+            
+            if (homeTeam != null && awayTeam != null) {
+                fixtures.add(Fixture(
+                    round = 1,
+                    homeTeam = homeTeam,
+                    awayTeam = awayTeam,
+                    label = match.stage,
+                    stage = match.stage,
+                    isKnockout = match.isKnockout
+                ))
+            }
         }
+        
+        return fixtures
     }
 }
