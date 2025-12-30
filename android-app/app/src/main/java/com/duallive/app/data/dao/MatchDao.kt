@@ -15,7 +15,6 @@ interface MatchDao {
     @Delete
     suspend fun deleteMatch(match: Match)
 
-    // 🔥 THIS IS THE MISSING FUNCTION CAUSING YOUR ERROR
     @Query("DELETE FROM matches WHERE leagueId = :leagueId")
     suspend fun deleteMatchesByLeague(leagueId: Long)
 }

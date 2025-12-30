@@ -53,8 +53,18 @@ class MainActivity : ComponentActivity() {
             }
 
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
-            val teams by if (selectedLeague != null) db.teamDao().getTeamsByLeague(selectedLeague!!.id).collectAsState(initial = emptyList()) else remember { mutableStateOf(emptyList()) }
-            val matches by if (selectedLeague != null) db.matchDao().getMatchesByLeague(selectedLeague!!.id).collectAsState(initial = emptyList()) else remember { mutableStateOf(emptyList()) }
+            
+            val teams by produceState<List<Team>>(initialValue = emptyList(), selectedLeague) {
+                selectedLeague?.let {
+                    db.teamDao().getTeamsByLeague(it.id.toLong()).collect { value = it }
+                }
+            }
+
+            val matches by produceState<List<Match>>(initialValue = emptyList(), selectedLeague) {
+                selectedLeague?.let {
+                    db.matchDao().getMatchesByLeague(it.id.toLong()).collect { value = it }
+                }
+            }
 
             val standings = remember(teams, matches) { TableCalculator.calculate(teams, matches) }
 
@@ -175,8 +185,7 @@ class MainActivity : ComponentActivity() {
                                     winnerName = selectedTeams.firstOrNull()?.name ?: "Unknown"
                                 } else {
                                     MainScope().launch {
-                                        // Reset matches for UCL Knockout only
-                                        db.matchDao().deleteMatchesByLeague(selectedLeague!!.id)
+                                        db.matchDao().deleteMatchesByLeague(selectedLeague!!.id.toLong())
                                         generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, stage)
                                         currentStageLabel = stage
                                         currentScreen = "fixture_list"
