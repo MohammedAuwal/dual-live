@@ -7,8 +7,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Modifier
 import com.duallive.app.ui.league.*
 import com.duallive.app.ui.team.*
 import com.duallive.app.ui.table.StandingsScreen
@@ -27,7 +25,7 @@ class MainActivity : ComponentActivity() {
         val scope = MainScope()
 
         setContent {
-            var currentScreen by rememberSaveable { mutableStateOf("league_list") }
+            var currentScreen by remember { mutableStateOf("league_list") }
             var selectedLeague by remember { mutableStateOf<League?>(null) }
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
 
@@ -42,11 +40,7 @@ class MainActivity : ComponentActivity() {
             val standings = remember(teams, matches) { TableCalculator.calculate(teams, matches) }
 
             BackHandler(currentScreen != "league_list") {
-                currentScreen = when (currentScreen) {
-                    "team_list" -> "league_list"
-                    "standings", "match_history", "match_entry" -> "team_list"
-                    else -> "league_list"
-                }
+                currentScreen = "league_list"
             }
 
             MaterialTheme {
@@ -70,12 +64,8 @@ class MainActivity : ComponentActivity() {
                                 league = league,
                                 teams = teams,
                                 onBack = { currentScreen = "league_list" },
-                                onAddTeamClick = { 
-                                    // You can expand this later, but it satisfies the parameter
-                                },
-                                onUpdateTeam = { updatedTeam -> 
-                                    scope.launch { db.teamDao().updateTeam(updatedTeam) } 
-                                },
+                                onAddTeamClick = { /* Handled inside TeamListScreen */ },
+                                onUpdateTeam = { scope.launch { db.teamDao().updateTeam(it) } },
                                 onNavigateToMatches = { currentScreen = "match_history" },
                                 onNavigateToTable = { currentScreen = "standings" },
                                 onNavigateToManual = { currentScreen = "match_entry" }
@@ -85,8 +75,8 @@ class MainActivity : ComponentActivity() {
                         "match_history" -> MatchHistoryScreen(
                             matches = matches, 
                             teams = teams,
-                            onDeleteMatch = { match -> scope.launch { db.matchDao().deleteMatch(match) } },
-                            onUpdateMatch = { match -> scope.launch { db.matchDao().updateMatch(match) } },
+                            onDeleteMatch = { scope.launch { db.matchDao().deleteMatch(it) } },
+                            onUpdateMatch = { scope.launch { db.matchDao().updateMatch(it) } },
                             onBack = { currentScreen = "team_list" }
                         )
                     }
