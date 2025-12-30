@@ -6,12 +6,16 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MatchDao {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMatch(match: Match)
 
     @Query("SELECT * FROM matches WHERE leagueId = :leagueId")
-    fun getMatchesByLeague(leagueId: Int): Flow<List<Match>>
+    fun getMatchesByLeague(leagueId: Long): Flow<List<Match>>
 
     @Delete
     suspend fun deleteMatch(match: Match)
+
+    // 🔥 THIS IS THE MISSING FUNCTION CAUSING YOUR ERROR
+    @Query("DELETE FROM matches WHERE leagueId = :leagueId")
+    suspend fun deleteMatchesByLeague(leagueId: Long)
 }

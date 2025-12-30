@@ -115,13 +115,12 @@ class MainActivity : ComponentActivity() {
                                             TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE") }
                                             
                                             if (selectedLeague?.type == LeagueType.UCL) {
-                                                // Check if the current stage is done
                                                 val canProceed = generatedFixtures.isNotEmpty() && matches.size >= generatedFixtures.size
                                                 TextButton(
                                                     onClick = { currentScreen = "knockout_select" },
                                                     enabled = canProceed
                                                 ) { 
-                                                    Text("PROCEED", color = if(canProceed) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Gray) 
+                                                    Text("PROCEED") 
                                                 }
                                             }
                                         }
@@ -176,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                     winnerName = selectedTeams.firstOrNull()?.name ?: "Unknown"
                                 } else {
                                     MainScope().launch {
-                                        // CLEAR results to allow next knockout stage to start fresh
+                                        // Reset matches for UCL Knockout only
                                         db.matchDao().deleteMatchesByLeague(selectedLeague!!.id)
                                         generatedFixtures = FixtureGenerator.generateKnockoutDraw(selectedTeams, stage)
                                         currentStageLabel = stage
