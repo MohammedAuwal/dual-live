@@ -9,7 +9,7 @@ enum class LeagueType {
 
 @Entity(tableName = "leagues")
 data class League(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
     val description: String,
     val isHomeAndAway: Boolean = false,

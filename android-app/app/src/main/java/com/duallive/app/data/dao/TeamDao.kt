@@ -7,13 +7,10 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TeamDao {
     @Query("SELECT * FROM teams WHERE leagueId = :leagueId")
-    fun getTeamsByLeague(leagueId: Long): Flow<List<Team>>
+    fun getTeamsByLeague(leagueId: Int): Flow<List<Team>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTeam(team: Team): Long
-
-    @Update
-    suspend fun updateTeam(team: Team)
+    suspend fun insertTeam(team: Team)
 
     @Delete
     suspend fun deleteTeam(team: Team)

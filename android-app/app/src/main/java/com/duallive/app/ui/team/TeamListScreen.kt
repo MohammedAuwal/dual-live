@@ -15,45 +15,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Team
-import com.duallive.app.data.entity.League
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeamListScreen(
-    league: League,
+    leagueName: String,
     teams: List<Team>,
+    isUcl: Boolean,
     onBack: () -> Unit,
     onAddTeamClick: () -> Unit,
-    onUpdateTeam: (Team) -> Unit,
-    onNavigateToMatches: () -> Unit,
-    onNavigateToTable: () -> Unit,
-    onNavigateToManual: () -> Unit
+    onUpdateTeam: (Team) -> Unit
 ) {
     var teamToEdit by remember { mutableStateOf<Team?>(null) }
-    val isUcl = league.type.name == "UCL"
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(league.name, fontWeight = FontWeight.Bold) },
+                title = { Text(leagueName, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
-        },
-        bottomBar = {
-            BottomAppBar {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    TextButton(onClick = onNavigateToManual) { Text("MANUAL") }
-                    TextButton(onClick = onNavigateToMatches) { Text("RESULTS") }
-                    TextButton(onClick = onNavigateToTable) { Text("TABLE") }
-                }
-            }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
@@ -106,14 +90,21 @@ fun TeamListScreen(
                                         Icon(Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
                                     }
                                 }
-                                team.groupName?.let {
-                                    Text(text = it, style = MaterialTheme.typography.labelSmall)
+                                if (team.groupName != null) {
+                                    Text(
+                                        text = team.groupName!!,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.secondary
+                                    )
                                 }
                             }
                         }
                     }
                     item {
-                        OutlinedCard(onClick = onAddTeamClick, modifier = Modifier.fillMaxWidth().height(100.dp)) {
+                        OutlinedCard(
+                            onClick = onAddTeamClick,
+                            modifier = Modifier.fillMaxWidth().height(100.dp)
+                        ) {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("+ Add Teams", color = MaterialTheme.colorScheme.primary)
                             }
@@ -124,6 +115,7 @@ fun TeamListScreen(
         }
     }
 
+    // --- Edit Dialog ---
     if (teamToEdit != null) {
         var editName by remember { mutableStateOf(teamToEdit!!.name) }
         var editGroup by remember { mutableStateOf(teamToEdit!!.groupName ?: "") }
@@ -133,9 +125,17 @@ fun TeamListScreen(
             title = { Text("Edit Team") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Team Name") })
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Team Name") }
+                    )
                     if (isUcl) {
-                        OutlinedTextField(value = editGroup, onValueChange = { editGroup = it }, label = { Text("Group (A-H)") })
+                        OutlinedTextField(
+                            value = editGroup,
+                            onValueChange = { editGroup = it },
+                            label = { Text("Group (e.g. Group A)") }
+                        )
                     }
                 }
             },
@@ -145,7 +145,9 @@ fun TeamListScreen(
                     teamToEdit = null
                 }) { Text("Save") }
             },
-            dismissButton = { TextButton(onClick = { teamToEdit = null }) { Text("Cancel") } }
+            dismissButton = {
+                TextButton(onClick = { teamToEdit = null }) { Text("Cancel") }
+            }
         )
     }
 }

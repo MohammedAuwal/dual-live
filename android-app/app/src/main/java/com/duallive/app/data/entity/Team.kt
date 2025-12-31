@@ -5,9 +5,9 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "teams")
 data class Team(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val leagueId: Long, 
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val leagueId: Int, // Link to the League
     val name: String,
     val logoPath: String? = null,
-    val groupName: String? = null 
+    val groupName: String? = null // For UCL groups
 )

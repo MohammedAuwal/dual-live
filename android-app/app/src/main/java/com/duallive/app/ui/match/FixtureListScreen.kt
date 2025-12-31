@@ -14,7 +14,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Match
 import com.duallive.app.data.entity.Team
@@ -25,49 +24,57 @@ import com.duallive.app.utils.Fixture
 fun FixtureListScreen(
     fixtures: List<Fixture>,
     matches: List<Match>,
-    teams: List<Team>,
     onMatchSelect: (Team, Team) -> Unit,
     onBack: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val teamIdToName = remember(teams) { teams.associate { it.id to it.name } }
-
-    // Logic to find if the match is already in the database (The Green Tick Fix)
+    
+    // Helper function to check if a fixture is played
     fun findMatchForFixture(fixture: Fixture): Match? {
         return matches.find { m ->
-            val homeName = teamIdToName[m.homeTeamId]
-            val awayName = teamIdToName[m.awayTeamId]
-            homeName == fixture.homeTeam.name && awayName == fixture.awayTeam.name
+            m.homeTeamId == fixture.homeTeam.id && m.awayTeamId == fixture.awayTeam.id
         }
     }
 
+    // Calculate Progress
     val totalFixtures = fixtures.size
     val completedCount = fixtures.count { findMatchForFixture(it) != null }
     val progressValue = if (totalFixtures > 0) completedCount.toFloat() / totalFixtures else 0f
     val percentage = (progressValue * 100).toInt()
 
-    val filteredFixtures = fixtures.filter {
-        it.homeTeam.name.contains(searchQuery, ignoreCase = true) ||
-        it.awayTeam.name.contains(searchQuery, ignoreCase = true)
+    val filteredFixtures = remember(searchQuery, fixtures) {
+        if (searchQuery.isBlank()) fixtures
+        else fixtures.filter { 
+            it.homeTeam.name.contains(searchQuery, ignoreCase = true) || 
+            it.awayTeam.name.contains(searchQuery, ignoreCase = true) 
+        }
     }
 
     val groupedFixtures = filteredFixtures.groupBy { it.round }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Tournament Schedule", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-
+        
         Spacer(modifier = Modifier.height(8.dp))
-
-        // Progress Bar
         Row(verticalAlignment = Alignment.CenterVertically) {
             LinearProgressIndicator(
                 progress = progressValue,
                 modifier = Modifier.weight(1f).height(8.dp),
                 color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
             )
-            Text("$percentage%", modifier = Modifier.padding(start = 8.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = "$percentage%",
+                modifier = Modifier.padding(start = 8.dp),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold
+            )
         }
+        Text(
+            text = "$completedCount of $totalFixtures matches played",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.outline
+        )
 
         OutlinedTextField(
             value = searchQuery,
@@ -77,40 +84,73 @@ fun FixtureListScreen(
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true
         )
-
+        
         LazyColumn(modifier = Modifier.weight(1f)) {
-            groupedFixtures.forEach { (round, roundFixtures) ->
+            groupedFixtures.forEach { (round, matchesInRound) ->
                 stickyHeader {
                     Text(
-                        text = if (round > 0) "ROUND $round" else "MATCHES",
-                        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondaryContainer).padding(8.dp),
-                        style = MaterialTheme.typography.labelLarge
+                        text = if (round > 0) "ROUND $round" else "KNOCKOUT STAGE",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .padding(8.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
 
-                items(roundFixtures) { fixture ->
-                    val matchData = findMatchForFixture(fixture)
-                    val isDone = matchData != null
+                items(matchesInRound) { fixture ->
+                    val completedMatch = findMatchForFixture(fixture)
+                    val isDone = completedMatch != null
 
                     Card(
                         onClick = { if (!isDone) onMatchSelect(fixture.homeTeam, fixture.awayTeam) },
                         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        enabled = !isDone,
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isDone) Color.LightGray.copy(alpha = 0.4f) else MaterialTheme.colorScheme.surfaceVariant
-                        )
+                            containerColor = if (isDone) Color(0xFFE0E0E0).copy(alpha = 0.6f) else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        enabled = !isDone
                     ) {
-                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(fixture.homeTeam.name, modifier = Modifier.weight(1f))
-
+                        Row(
+                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = fixture.homeTeam.name, 
+                                modifier = Modifier.weight(1f),
+                                color = if (isDone) Color.Gray else Color.Unspecified,
+                                fontWeight = if(searchQuery.isNotEmpty() && fixture.homeTeam.name.contains(searchQuery, true)) FontWeight.ExtraBold else FontWeight.Normal
+                            )
+                            
                             if (isDone) {
-                                Text("${matchData?.homeScore} - ${matchData?.awayScore}", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
-                                Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50))
+                                Text(
+                                    text = "${completedMatch?.homeScore} - ${completedMatch?.awayScore}",
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    fontWeight = FontWeight.Black,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             } else {
-                                Text("vs", modifier = Modifier.padding(horizontal = 8.dp))
+                                Text("vs", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
                             }
 
-                            Text(fixture.awayTeam.name, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
+                            Text(
+                                text = fixture.awayTeam.name, 
+                                modifier = Modifier.weight(1f),
+                                color = if (isDone) Color.Gray else Color.Unspecified,
+                                fontWeight = if(searchQuery.isNotEmpty() && fixture.awayTeam.name.contains(searchQuery, true)) FontWeight.ExtraBold else FontWeight.Normal,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.End
+                            )
+                            
+                            if (isDone) {
+                                Icon(
+                                    imageVector = Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = Color(0xFF4CAF50),
+                                    modifier = Modifier.padding(start = 8.dp).size(20.dp)
+                                )
+                            }
                         }
                     }
                 }

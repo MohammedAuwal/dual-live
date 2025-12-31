@@ -6,13 +6,13 @@ import com.duallive.app.data.entity.Team
 
 object TableCalculator {
     fun calculate(teams: List<Team>, matches: List<Match>): List<Standing> {
-        // Corrected: teamId is now Long, so we don't use .toInt()
         val standingsMap = teams.associate { it.id to Standing(teamId = it.id) }.toMutableMap()
 
         for (match in matches) {
             val home = standingsMap[match.homeTeamId] ?: continue
             val away = standingsMap[match.awayTeamId] ?: continue
 
+            // 1. Calculate base updates (Matches Played + Goals)
             var h = home.copy(
                 matchesPlayed = home.matchesPlayed + 1,
                 goalsFor = home.goalsFor + match.homeScore,
@@ -24,6 +24,7 @@ object TableCalculator {
                 goalsAgainst = away.goalsAgainst + match.homeScore
             )
 
+            // 2. Calculate Outcome (W/D/L + Points)
             when {
                 match.homeScore > match.awayScore -> {
                     h = h.copy(wins = h.wins + 1, points = h.points + 3)
@@ -38,26 +39,20 @@ object TableCalculator {
                     a = a.copy(draws = a.draws + 1, points = a.points + 1)
                 }
             }
+            
             standingsMap[match.homeTeamId] = h
             standingsMap[match.awayTeamId] = a
         }
 
+        // 3. Professional Sorting Logic
+        // Primary: Points
+        // Secondary: Goal Difference (GF - GA)
+        // Tertiary: Goals Scored (GF)
+        
         return standingsMap.values.toList().sortedWith(
             compareByDescending<Standing> { it.points }
                 .thenByDescending { it.goalsFor - it.goalsAgainst }
                 .thenByDescending { it.goalsFor }
         )
-    }
-
-    fun isStageComplete(matchesInCurrentLeague: List<Match>, fixturesInCurrentDraw: Int): Boolean {
-        if (fixturesInCurrentDraw == 0) return false
-        return matchesInCurrentLeague.size >= fixturesInCurrentDraw
-    }
-
-    fun isGroupStageComplete(teams: List<Team>, matches: List<Match>, isHomeAndAway: Boolean = false): Boolean {
-        if (teams.isEmpty()) return false
-        val baseMatches = (teams.size * (teams.size - 1)) / 2
-        val totalNeeded = if (isHomeAndAway) baseMatches * 2 else baseMatches
-        return matches.size >= totalNeeded && matches.size > 0
     }
 }
