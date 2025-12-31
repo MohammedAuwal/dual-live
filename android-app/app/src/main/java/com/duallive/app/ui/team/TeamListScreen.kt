@@ -1,5 +1,9 @@
 package com.duallive.app.ui.team
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -8,18 +12,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.duallive.app.data.entity.Team
+import com.duallive.app.ui.components.ShareLeagueDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TeamListScreen(
     leagueName: String,
+    inviteCode: String = "DL-2025",
     teams: List<Team>,
     isUcl: Boolean,
     onBack: () -> Unit,
@@ -27,6 +35,8 @@ fun TeamListScreen(
     onUpdateTeam: (Team) -> Unit
 ) {
     var teamToEdit by remember { mutableStateOf<Team?>(null) }
+    var showShareDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -35,6 +45,11 @@ fun TeamListScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showShareDialog = true }) {
+                        Icon(Icons.Default.Share, contentDescription = "Share League")
                     }
                 }
             )
@@ -113,41 +128,50 @@ fun TeamListScreen(
                 }
             }
         }
-    }
 
-    // --- Edit Dialog ---
-    if (teamToEdit != null) {
-        var editName by remember { mutableStateOf(teamToEdit!!.name) }
-        var editGroup by remember { mutableStateOf(teamToEdit!!.groupName ?: "") }
+        // --- Share Dialog ---
+        if (showShareDialog) {
+            ShareLeagueDialog(
+                leagueName = leagueName,
+                inviteCode = inviteCode,
+                onDismiss = { showShareDialog = false }
+            )
+        }
 
-        AlertDialog(
-            onDismissRequest = { teamToEdit = null },
-            title = { Text("Edit Team") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = editName,
-                        onValueChange = { editName = it },
-                        label = { Text("Team Name") }
-                    )
-                    if (isUcl) {
+        // --- Edit Dialog ---
+        if (teamToEdit != null) {
+            var editName by remember { mutableStateOf(teamToEdit!!.name) }
+            var editGroup by remember { mutableStateOf(teamToEdit!!.groupName ?: "") }
+
+            AlertDialog(
+                onDismissRequest = { teamToEdit = null },
+                title = { Text("Edit Team") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
-                            value = editGroup,
-                            onValueChange = { editGroup = it },
-                            label = { Text("Group (e.g. Group A)") }
+                            value = editName,
+                            onValueChange = { editName = it },
+                            label = { Text("Team Name") }
                         )
+                        if (isUcl) {
+                            OutlinedTextField(
+                                value = editGroup,
+                                onValueChange = { editGroup = it },
+                                label = { Text("Group (e.g. Group A)") }
+                            )
+                        }
                     }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        onUpdateTeam(teamToEdit!!.copy(name = editName, groupName = editGroup.ifBlank { null }))
+                        teamToEdit = null
+                    }) { Text("Save") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { teamToEdit = null }) { Text("Cancel") }
                 }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    onUpdateTeam(teamToEdit!!.copy(name = editName, groupName = editGroup.ifBlank { null }))
-                    teamToEdit = null
-                }) { Text("Save") }
-            },
-            dismissButton = {
-                TextButton(onClick = { teamToEdit = null }) { Text("Cancel") }
-            }
-        )
+            )
+        }
     }
 }

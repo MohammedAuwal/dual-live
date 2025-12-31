@@ -13,5 +13,6 @@ data class League(
     val name: String,
     val description: String,
     val isHomeAndAway: Boolean = false,
-    val type: LeagueType = LeagueType.CLASSIC
+    val type: LeagueType,
+    val inviteCode: String = "DL-${(1000..9999).random()}" = LeagueType.CLASSIC
 )

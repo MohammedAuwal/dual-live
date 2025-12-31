@@ -30,6 +30,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val db = AppDatabase.getDatabase(this)
+        val intentData = intent?.data
+        val deepLinkCode = if (intentData?.pathSegments?.contains("join") == true) {
+            intentData.lastPathSegment
+        } else null
 
         setContent {
             var currentScreen by rememberSaveable { mutableStateOf("home") }
@@ -137,7 +141,8 @@ class MainActivity : ComponentActivity() {
                                 ) { p ->
                                     Box(modifier = Modifier.padding(p)) {
                                         TeamListScreen(
-                                            leagueName = if (currentStageLabel.isEmpty()) selectedLeague?.name ?: "" else "${selectedLeague?.name?.substringBefore(" -")} - $currentStageLabel", 
+                                            leagueName = if (currentStageLabel.isEmpty()) selectedLeague?.name ?: "" else "${selectedLeague?.name?.substringBefore(" -")} - $currentStageLabel",
+                                        inviteCode = selectedLeague?.inviteCode ?: "DL-0000", 
                                             teams = teams, 
                                             isUcl = selectedLeague?.type == LeagueType.UCL, 
                                             onBack = { currentScreen = "league_list" }, 
