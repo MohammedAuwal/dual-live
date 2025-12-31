@@ -4,6 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -16,10 +19,10 @@ import com.duallive.app.ui.home.HomeScreen
 import com.duallive.app.ui.league.LeagueListScreen
 import com.duallive.app.ui.league.CreateLeagueScreen
 import com.duallive.app.data.entity.LeagueType
+import com.duallive.app.viewmodel.LeagueViewModel
 
 @Composable
-fun AppNavGraph(navController: NavHostController) {
-    // Global Navy Background for all screens
+fun AppNavGraph(navController: NavHostController, leagueViewModel: LeagueViewModel) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -33,35 +36,36 @@ fun AppNavGraph(navController: NavHostController) {
             navController = navController,
             startDestination = "home"
         ) {
-            // 1. Dashboard
             composable("home") {
                 HomeScreen(
-                    onNavigateToClassic = { navController.navigate("classic_list") },
-                    onNavigateToUCL = { navController.navigate("ucl_list") }
+                    onCreateLeague = { navController.navigate("create_league/CLASSIC") },
+                    onJoinLeague = { /* To be implemented */ },
+                    onViewLeagues = { navController.navigate("classic_list") }
                 )
             }
 
-            // 2. Classic League List
             composable("classic_list") {
+                val leagues by leagueViewModel.getLeaguesByType(LeagueType.CLASSIC).observeAsState(initial = emptyList())
                 LeagueListScreen(
+                    leagues = leagues,
                     type = LeagueType.CLASSIC,
                     onAddLeagueClick = { navController.navigate("create_league/CLASSIC") },
-                    onLeagueClick = { /* Navigate to league details */ },
-                    onDeleteLeague = { /* Call ViewModel delete */ }
+                    onLeagueClick = { league -> /* Navigate to Details */ },
+                    onDeleteLeague = { league -> leagueViewModel.deleteLeague(league) }
                 )
             }
 
-            // 3. UCL League List
             composable("ucl_list") {
+                val leagues by leagueViewModel.getLeaguesByType(LeagueType.UCL).observeAsState(initial = emptyList())
                 LeagueListScreen(
+                    leagues = leagues,
                     type = LeagueType.UCL,
                     onAddLeagueClick = { navController.navigate("create_league/UCL") },
-                    onLeagueClick = { /* Navigate to league details */ },
-                    onDeleteLeague = { /* Call ViewModel delete */ }
+                    onLeagueClick = { league -> /* Navigate to Details */ },
+                    onDeleteLeague = { league -> leagueViewModel.deleteLeague(league) }
                 )
             }
 
-            // 4. Create League (Dynamic Type)
             composable(
                 route = "create_league/{leagueType}",
                 arguments = listOf(navArgument("leagueType") { type = NavType.StringType })
@@ -72,8 +76,8 @@ fun AppNavGraph(navController: NavHostController) {
                 CreateLeagueScreen(
                     preselectedType = selectedType,
                     onSave = { name, desc, isHA, type ->
-                        // Here you would call ViewModel.save()
-                        navController.popBackStack() 
+                        leagueViewModel.createLeague(name, desc, isHA, type)
+                        navController.popBackStack()
                     }
                 )
             }
