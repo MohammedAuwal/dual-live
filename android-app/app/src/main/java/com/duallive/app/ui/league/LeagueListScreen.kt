@@ -12,7 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.duallive.app.data.entity.League
 import com.duallive.app.data.entity.LeagueType
 
@@ -27,7 +30,7 @@ fun LeagueListScreen(
     var leagueToDelete by remember { mutableStateOf<League?>(null) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("My Leagues") }) },
+        topBar = { TopAppBar(title = { Text("My Leagues", fontWeight = FontWeight.Bold) }) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddLeagueClick) {
                 Icon(Icons.Default.Add, contentDescription = "Add League")
@@ -35,8 +38,26 @@ fun LeagueListScreen(
         }
     ) { padding ->
         if (leagues.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No leagues created yet. Tap + to start.")
+            // Enhanced Empty State based on your request
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "You did not create or join any league yet.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onAddLeagueClick) {
+                        Text("Start Now")
+                    }
+                }
             }
         } else {
             LazyColumn(
@@ -61,7 +82,6 @@ fun LeagueListScreen(
                                     Text(text = league.name, style = MaterialTheme.typography.titleLarge)
                                     Spacer(modifier = Modifier.width(8.dp))
                                     
-                                    // Safety Tag for League Type
                                     SuggestionChip(
                                         onClick = { },
                                         label = { 
@@ -74,7 +94,7 @@ fun LeagueListScreen(
                                     )
                                 }
                                 league.description?.let {
-                                    Text(text = it, style = MaterialTheme.typography.bodyMedium)
+                                    Text(text = it, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                                 }
                             }
                             IconButton(onClick = { leagueToDelete = league }) {

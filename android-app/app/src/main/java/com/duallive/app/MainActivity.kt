@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
                             "home" -> HomeScreen(
                                 onCreateLeague = { currentScreen = "create_league" },
                                 onViewLeagues = { currentScreen = "league_list" },
-                                onJoinLeague = { /* Future logic */ }
+                                onJoinSubmit = { id -> println("Joining League: $id") }
                             )
                             "league_list" -> LeagueListScreen(
                                 leagues = leagues, 
