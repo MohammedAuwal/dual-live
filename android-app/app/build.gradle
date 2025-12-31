@@ -1,4 +1,3 @@
-plugins { id("com.google.gms.google-services") }
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
