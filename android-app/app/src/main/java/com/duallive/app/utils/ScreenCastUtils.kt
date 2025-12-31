@@ -30,4 +30,13 @@ object ScreenCastUtils {
             .setOngoing(true)
             .build()
     }
+
+    // Adding missing functions to satisfy ScreenCastController
+    fun startScreenCapture(context: Context) {
+        // Placeholder for capture logic
+    }
+
+    fun stopScreenCapture(context: Context) {
+        // Placeholder for stop logic
+    }
 }
