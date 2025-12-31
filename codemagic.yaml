@@ -1,15 +1,12 @@
 workflows:
   android-workflow:
     name: Dual Live Android Workflow
-    max_build_duration: 60
     instance_type: mac_mini_m1
+    max_build_duration: 60
     environment:
+      java: 17
       groups:
         - keystore_credentials
-      vars:
-        PACKAGE_NAME: "com.duallive.app"
-      java: 17
-      android_sdk: 34
     scripts:
       - name: Set up local.properties
         script: |
@@ -23,4 +20,4 @@ workflows:
     publishing:
       email:
         recipients:
-          - MohammedAuwal@example.com # Replace with your email
+          - mohammedauwalnasara@gmail.com
