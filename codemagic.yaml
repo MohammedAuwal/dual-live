@@ -1,17 +1,26 @@
 workflows:
   android-workflow:
-    name: Android Build
+    name: Dual Live Android Workflow
     max_build_duration: 60
-
+    instance_type: mac_mini_m1
     environment:
+      groups:
+        - keystore_credentials
       vars:
-        FLUTTER_CHANNEL: stable
-
+        PACKAGE_NAME: "com.duallive.app"
+      java: 17
+      android_sdk: 34
     scripts:
-      - name: Build APK
+      - name: Set up local.properties
         script: |
-          cd android-app
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: Build APK
+        script: | 
+          chmod +x gradlew
           ./gradlew assembleDebug
-
     artifacts:
-      - android-app/app/build/outputs/apk/debug/app-debug.apk
+      - app/build/outputs/apk/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - MohammedAuwal@example.com # Replace with your email
