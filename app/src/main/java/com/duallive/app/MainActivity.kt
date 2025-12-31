@@ -167,7 +167,6 @@ class MainActivity : ComponentActivity() {
                                                         }
                                                         currentScreen = "fixture_list"
                                                     }) { Text("DRAW", color = Color.White) }
-                                                    TextButton(onClick = { currentScreen = "match_entry" }) { Text("MANUAL", color = Color.White) }
                                                     TextButton(onClick = { currentScreen = "match_history" }) { Text("RESULTS", color = Color.White) }
                                                     TextButton(onClick = { currentScreen = "standings" }) { Text("TABLE", color = Color.White) }
                                                 }
