@@ -1,12 +1,9 @@
 package com.duallive.app.ui.table
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,7 +36,6 @@ fun StandingsScreen(teams: List<Team>, standings: List<Standing>) {
             fontWeight = FontWeight.ExtraBold
         )
         
-        // Quick Stats Row
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
@@ -113,7 +109,6 @@ fun StandingTable(teams: List<Team>, standings: List<Standing>, accentColor: Col
     val scrollState = rememberScrollState()
     
     Column(modifier = Modifier.horizontalScroll(scrollState)) {
-        // Table Header
         Row(modifier = Modifier.padding(vertical = 8.dp)) {
             HeaderText("#", 35.dp)
             HeaderText("Team", 120.dp)
@@ -125,7 +120,7 @@ fun StandingTable(teams: List<Team>, standings: List<Standing>, accentColor: Col
             HeaderText("Pts", 50.dp, accentColor)
         }
         
-        HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+        Divider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
         
         standings.forEachIndexed { index, standing ->
             val teamName = teams.find { it.id == standing.teamId }?.name ?: "Unknown"
@@ -142,7 +137,7 @@ fun StandingTable(teams: List<Team>, standings: List<Standing>, accentColor: Col
                 Text("${standing.points}", modifier = Modifier.width(50.dp), fontWeight = FontWeight.Black, color = accentColor, fontSize = 15.sp)
             }
             if (index < standings.size - 1) {
-                HorizontalDivider(color = Color.White.copy(alpha = 0.05f))
+                Divider(color = Color.White.copy(alpha = 0.05f), thickness = 1.dp)
             }
         }
     }

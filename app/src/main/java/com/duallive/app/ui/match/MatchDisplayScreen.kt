@@ -29,7 +29,6 @@ fun MatchDisplayScreen(
     var seconds by remember { mutableStateOf(0) }
     var isRunning by remember { mutableStateOf(false) }
     
-    // Determine if it's a Gold (UCL/Final) or Silver theme
     val isFinal = stageLabel.contains("Final", ignoreCase = true)
     val accentColor = if (isFinal || stageLabel.isNotEmpty()) Color(0xFFE3BC63) else Color.White
 
@@ -48,7 +47,6 @@ fun MatchDisplayScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Header / Stage Label
         if (stageLabel.isNotEmpty()) {
             Text(
                 text = if (isFinal) "🏆 ${stageLabel.uppercase()} 🏆" else stageLabel.uppercase(),
@@ -59,7 +57,6 @@ fun MatchDisplayScreen(
             )
         }
 
-        // Timer Display
         Text(
             text = timeText,
             fontSize = 80.sp,
@@ -70,13 +67,11 @@ fun MatchDisplayScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Main Scoreboard
         Row(
             modifier = Modifier.fillMaxWidth().weight(1f),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Home Team
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(homeName, fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -97,7 +92,6 @@ fun MatchDisplayScreen(
 
             Text("VS", color = accentColor.copy(alpha = 0.5f), fontSize = 20.sp, fontWeight = FontWeight.Black)
 
-            // Away Team
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(awayName, fontSize = 20.sp, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -119,12 +113,12 @@ fun MatchDisplayScreen(
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        // Control Buttons
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(
                 onClick = { isRunning = !isRunning },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.White.collect(alpha = 0.1f))
+                // FIXED: Changed collect to copy
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.1f))
             ) {
                 Text(if (isRunning) "PAUSE MATCH" else "START MATCH", color = Color.White, fontWeight = FontWeight.Bold)
             }
