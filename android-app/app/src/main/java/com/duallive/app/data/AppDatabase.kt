@@ -23,7 +23,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+                val instance = Room.databaseBuilder(context, AppDatabase::class.java, "duallive_db").fallbackToDestructiveMigration().build() // 
                     context.applicationContext,
                     AppDatabase::class.java,
                     "dual_live_db"

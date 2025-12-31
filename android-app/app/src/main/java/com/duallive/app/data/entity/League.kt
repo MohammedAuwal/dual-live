@@ -11,8 +11,8 @@ enum class LeagueType {
 data class League(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val description: String,
+    val description: String? = null,
     val isHomeAndAway: Boolean = false,
-    val type: LeagueType,
-    val inviteCode: String = "DL-${(1000..9999).random()}" = LeagueType.CLASSIC
+    val type: LeagueType = LeagueType.CLASSIC,
+    val inviteCode: String = "DL-${(1000..9999).random()}"
 )
