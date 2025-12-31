@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.duallive.app.data.dao.*
 import com.duallive.app.data.entity.*
 
@@ -12,6 +13,7 @@ import com.duallive.app.data.entity.*
     version = 2, 
     exportSchema = false
 )
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun leagueDao(): LeagueDao
     abstract fun teamDao(): TeamDao
@@ -23,10 +25,10 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(context, AppDatabase::class.java, "duallive_db").fallbackToDestructiveMigration().build() // 
+                val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "dual_live_db"
+                    "duallive_db"
                 )
                 .fallbackToDestructiveMigration()
                 .build()
