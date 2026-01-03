@@ -30,125 +30,68 @@ fun AppNavGraph(
 ) {
     NavHost(navController = navController, startDestination = "home") {
 
-        // --- HOME SCREEN ---
         composable("home") {
             HomeScreen(
                 onNavigateToClassic = { navController.navigate("classic_list") },
                 onNavigateToUCL = { navController.navigate("ucl_list") },
                 onNavigateToNewUCL = { navController.navigate("swiss_list") },
-                onJoinSubmit = { code -> println("Joining league with code: $code") }
+                onJoinSubmit = { }
             )
         }
 
-        // --- CLASSIC LEAGUE LIST ---
         composable("classic_list") {
             val leagues by leagueViewModel.getLeaguesByType(LeagueType.CLASSIC).observeAsState(initial = emptyList())
-            LeagueListScreen(
-                leagues = leagues,
-                type = LeagueType.CLASSIC,
-                onAddLeagueClick = { navController.navigate("create_league/CLASSIC") },
-                onLeagueClick = { league -> 
-                    // Make sure "team_list" exists or change to match screen
-                    navController.navigate("team_list/${league.id}") 
-                },
-                onDeleteLeague = { leagueViewModel.deleteLeague(it) }
-            )
+            LeagueListScreen(leagues = leagues, type = LeagueType.CLASSIC, onAddLeagueClick = { navController.navigate("create_league/CLASSIC") }, onLeagueClick = { navController.navigate("team_list/${it.id}") }, onDeleteLeague = { leagueViewModel.deleteLeague(it) })
         }
 
-        // --- OLD UCL VERSION LIST ---
         composable("ucl_list") {
             val leagues by leagueViewModel.getLeaguesByType(LeagueType.UCL).observeAsState(initial = emptyList())
-            LeagueListScreen(
-                leagues = leagues,
-                type = LeagueType.UCL,
-                onAddLeagueClick = { navController.navigate("create_league/UCL") },
-                onLeagueClick = { league -> 
-                    navController.navigate("team_list/${league.id}") 
-                },
-                onDeleteLeague = { leagueViewModel.deleteLeague(it) }
-            )
+            LeagueListScreen(leagues = leagues, type = LeagueType.UCL, onAddLeagueClick = { navController.navigate("create_league/UCL") }, onLeagueClick = { navController.navigate("team_list/${it.id}") }, onDeleteLeague = { leagueViewModel.deleteLeague(it) })
         }
 
-        // --- NEW SWISS UCL LIST ---
         composable("swiss_list") {
             val leagues by leagueViewModel.getLeaguesByType(LeagueType.SWISS).observeAsState(initial = emptyList())
-            LeagueListScreen(
-                leagues = leagues,
-                type = LeagueType.SWISS,
-                onAddLeagueClick = { navController.navigate("create_league/SWISS") },
-                onLeagueClick = { league -> 
-                    // ACTION: Go straight to the Match Center where scores are!
-                    navController.navigate("new_ucl_matches") 
-                },
-                onDeleteLeague = { leagueViewModel.deleteLeague(it) }
-            )
+            LeagueListScreen(leagues = leagues, type = LeagueType.SWISS, onAddLeagueClick = { navController.navigate("create_league/SWISS") }, onLeagueClick = { navController.navigate("new_ucl_league/${it.id}") }, onDeleteLeague = { leagueViewModel.deleteLeague(it) })
         }
 
-        // --- CREATE LEAGUE FLOW ---
-        composable(
-            route = "create_league/{leagueType}",
-            arguments = listOf(navArgument("leagueType") { type = NavType.StringType })
-        ) { backStackEntry ->
+        composable("create_league/{leagueType}") { backStackEntry ->
             val typeStr = backStackEntry.arguments?.getString("leagueType") ?: "CLASSIC"
             val selectedType = try { LeagueType.valueOf(typeStr) } catch(e: Exception) { LeagueType.CLASSIC }
-
             CreateLeagueScreen(
                 preselectedType = selectedType,
                 onSave = { name, desc, isHA, type ->
                     leagueViewModel.createLeague(name, desc, isHA, type)
-                    // After creating a Swiss league, go to registration
-                    if (type == LeagueType.SWISS) {
-                        navController.navigate("new_ucl_team_registration/0")
-                    } else {
-                        navController.popBackStack()
-                    }
+                    if (type == LeagueType.SWISS) navController.navigate("new_ucl_team_registration/0")
+                    else navController.popBackStack()
                 },
                 onBack = { navController.popBackStack() }
             )
         }
 
-        // --- NEW UCL 2026: REGISTRATION ---
-        composable(
-            "new_ucl_team_registration/{leagueId}",
-            arguments = listOf(navArgument("leagueId") { type = NavType.IntType })
-        ) {
+        composable("new_ucl_team_registration/{leagueId}") {
             Ucl26RegistrationScreen(onTeamsConfirmed = { teamNames ->
                 ucl26ViewModel.initializeTournament(teamNames)
-                // DIRECT REDIRECT: Registration -> Scores (Not boring table)
-                navController.navigate("new_ucl_matches") {
-                    popUpTo("swiss_list") { inclusive = false }
-                }
+                navController.navigate("new_ucl_matches")
             })
         }
 
-        // --- NEW UCL 2026: MATCH CENTER (THE ACTION) ---
         composable("new_ucl_matches") {
-            Ucl26MatchScreen(
-                viewModel = ucl26ViewModel, 
-                onBack = { navController.navigate("swiss_list") }
-            )
+            Ucl26MatchScreen(viewModel = ucl26ViewModel, onBack = { navController.popBackStack() })
         }
 
-        // --- NEW UCL 2026: LEAGUE TABLE ---
-        composable(
-            "new_ucl_league/{leagueId}",
-            arguments = listOf(navArgument("leagueId") { type = NavType.IntType })
-        ) { backStackEntry ->
-            val leagueId = backStackEntry.arguments?.getInt("leagueId") ?: 0
+        composable("new_ucl_league/{leagueId}") {
+            val id = it.arguments?.getString("leagueId")?.toInt() ?: 0
             Ucl26LeagueScreen(
-                leagueId = leagueId,
-                viewModel = ucl26ViewModel,
-                onNavigateToMatches = { navController.navigate("new_ucl_matches") },
-                onNavigateToBracket = { navController.navigate("new_ucl_bracket") }
+                leagueId = id, 
+                viewModel = ucl26ViewModel, 
+                onNavigateToMatches = { navController.navigate("new_ucl_matches") }, 
+                onNavigateToBracket = { navController.navigate("new_ucl_bracket") },
+                onBack = { navController.popBackStack() } // FIXED: Added missing onBack parameter
             )
         }
 
-        // --- NEW UCL 2026: KNOCKOUT BRACKET ---
         composable("new_ucl_bracket") {
-            Ucl26BracketScreen(
-                viewModel = ucl26ViewModel, 
-                onBack = { navController.popBackStack() }
-            )
+            Ucl26BracketScreen(viewModel = ucl26ViewModel, onBack = { navController.popBackStack() })
         }
     }
 }

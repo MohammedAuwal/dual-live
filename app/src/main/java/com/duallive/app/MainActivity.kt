@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
 
             val ucl26ViewModel: Ucl26ViewModel = viewModel()
 
+            // Handle System Back Button
             BackHandler(enabled = currentScreen != "home") {
                 currentScreen = when (currentScreen) {
                     "ucl26_registration", "ucl26_league", "league_list", "create_league" -> "home"
@@ -69,7 +70,7 @@ class MainActivity : ComponentActivity() {
             val standings = remember(teams, matches) { TableCalculator.calculate(teams, matches) }
 
             MaterialTheme {
-                Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF0A192F), Color(0xFF040C1A))))) {
+                Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF00122E), Color(0xFF040C1A))))) {
                     Scaffold(
                         containerColor = Color.Transparent,
                         bottomBar = {
@@ -137,7 +138,8 @@ class MainActivity : ComponentActivity() {
                                     leagueId = selectedLeague?.id ?: 0, 
                                     viewModel = ucl26ViewModel, 
                                     onNavigateToMatches = { currentScreen = "ucl26_matches" }, 
-                                    onNavigateToBracket = { currentScreen = "ucl26_bracket" }
+                                    onNavigateToBracket = { currentScreen = "ucl26_bracket" },
+                                    onBack = { currentScreen = "league_list" } // FIXED: Missing parameter added
                                 )
 
                                 "ucl26_matches" -> Ucl26MatchScreen(viewModel = ucl26ViewModel, onBack = { currentScreen = "ucl26_league" })
