@@ -106,7 +106,7 @@ fun AppNavGraph(
 
         // --- NEW UCL 2026: MATCH CENTER ---
         composable("new_ucl_matches") {
-            Ucl26MatchCenterScreen(navController = navController, viewModel = ucl26ViewModel)
+            Ucl26MatchScreen(navController = navController, viewModel = ucl26ViewModel)
         }
 
         // --- NEW UCL 2026: KNOCKOUT BRACKET ---
