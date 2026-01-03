@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,11 +29,20 @@ fun Ucl26RegistrationScreen(onTeamsConfirmed: (List<String>) -> Unit) {
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFF00122E)).padding(16.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("Register Teams", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("UCL Registration", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text("${teamList.size} / 36 Teams Added", color = Color(0xFFD4AF37), fontSize = 14.sp)
             }
-            IconButton(onClick = { showDialog = true }, modifier = Modifier.background(Color(0xFFD4AF37), RoundedCornerShape(8.dp))) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF00122E))
+            Row {
+                // Randomize Button
+                if (teamList.size == 36) {
+                    IconButton(onClick = { teamList = teamList.shuffled() }, modifier = Modifier.padding(end = 8.dp).background(Color.White.copy(0.1f), RoundedCornerShape(8.dp))) {
+                        Icon(Icons.Default.Shuffle, contentDescription = null, tint = Color.White)
+                    }
+                }
+                // Add Button
+                IconButton(onClick = { showDialog = true }, modifier = Modifier.background(Color(0xFFD4AF37), RoundedCornerShape(8.dp))) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF00122E))
+                }
             }
         }
 
@@ -44,9 +54,9 @@ fun Ucl26RegistrationScreen(onTeamsConfirmed: (List<String>) -> Unit) {
             }
         } else {
             LazyColumn(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(teamList) { team ->
+                items(teamList.asReversed()) { team ->
                     Card(colors = CardDefaults.cardColors(containerColor = Color(0x1AFFFFFF)), shape = RoundedCornerShape(12.dp)) {
-                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(team, color = Color.White, fontWeight = FontWeight.Medium)
                             IconButton(onClick = { teamList = teamList - team }, modifier = Modifier.size(24.dp)) {
                                 Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red.copy(0.7f))
@@ -59,12 +69,12 @@ fun Ucl26RegistrationScreen(onTeamsConfirmed: (List<String>) -> Unit) {
 
         Button(
             onClick = { onTeamsConfirmed(teamList) },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(bottom = 8.dp),
             enabled = teamList.size == 36,
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37), disabledContainerColor = Color.Gray),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("GENARETE SWISS LEAGUE", color = Color(0xFF00122E), fontWeight = FontWeight.Bold)
+            Text("GENERATE SWISS LEAGUE", color = Color(0xFF00122E), fontWeight = FontWeight.Bold)
         }
     }
 
@@ -75,13 +85,13 @@ fun Ucl26RegistrationScreen(onTeamsConfirmed: (List<String>) -> Unit) {
             title = { Text("Add Teams", color = Color.White) },
             text = {
                 Column {
-                    Text("Separate names by new line or comma.", color = Color.White.copy(0.6f), fontSize = 12.sp)
+                    Text("Paste names (one per line) or comma separated.", color = Color.White.copy(0.6f), fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
                         modifier = Modifier.fillMaxWidth().height(150.dp),
-                        placeholder = { Text("Team Names", color = Color.White.copy(0.3f)) },
+                        placeholder = { Text("Example: Real Madrid, Man City...", color = Color.White.copy(0.3f)) },
                         colors = TextFieldDefaults.outlinedTextFieldColors(focusedBorderColor = Color(0xFFD4AF37), unfocusedTextColor = Color.White, focusedTextColor = Color.White)
                     )
                 }
@@ -89,11 +99,11 @@ fun Ucl26RegistrationScreen(onTeamsConfirmed: (List<String>) -> Unit) {
             confirmButton = {
                 Button(onClick = {
                     val newTeams = inputText.split("\n", ",").map { it.trim() }.filter { it.isNotBlank() }
-                    teamList = (teamList + newTeams).take(36)
+                    teamList = (teamList + newTeams).distinct().take(36)
                     inputText = ""
                     showDialog = false
                 }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37))) {
-                    Text("ADD TEAMS", color = Color(0xFF00122E))
+                    Text("ADD", color = Color(0xFF00122E))
                 }
             },
             dismissButton = {
