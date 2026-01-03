@@ -39,7 +39,6 @@ fun Ucl26MatchScreen(viewModel: Ucl26ViewModel, onBack: () -> Unit) {
                 }
             },
             actions = {
-                // The Reset Button
                 IconButton(onClick = { showResetDialog = true }) {
                     Icon(Icons.Default.Refresh, contentDescription = "Reset", tint = Color.White.copy(alpha = 0.7f))
                 }
@@ -52,12 +51,13 @@ fun Ucl26MatchScreen(viewModel: Ucl26ViewModel, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(matches) { match ->
-                val homeTeam = teams.find { it.id == match.homeTeamId }
-                val awayTeam = teams.find { it.id == match.awayTeamId }
+                // FIXED: Changed .id to .teamId and .name to .teamName
+                val homeTeam = teams.find { it.teamId == match.homeTeamId }
+                val awayTeam = teams.find { it.teamId == match.awayTeamId }
 
                 MatchResultCard(
-                    homeName = homeTeam?.name ?: "Team ${match.homeTeamId}", 
-                    awayName = awayTeam?.name ?: "Team ${match.awayTeamId}",
+                    homeName = homeTeam?.teamName ?: "Team ${match.homeTeamId}", 
+                    awayName = awayTeam?.teamName ?: "Team ${match.awayTeamId}",
                     homeScore = match.homeScore,
                     awayScore = match.awayScore,
                     onScoreChange = { h, a -> 
@@ -77,13 +77,12 @@ fun Ucl26MatchScreen(viewModel: Ucl26ViewModel, onBack: () -> Unit) {
         }
     }
 
-    // Reset Confirmation Dialog
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
             containerColor = Color(0xFF0A192F),
             title = { Text("Reset Scores?", color = Color.White) },
-            text = { Text("This will set all scores in Round $currentRound back to 0-0.", color = Color.White.copy(alpha = 0.7f)) },
+            text = { Text("This will set all scores back to 0-0.", color = Color.White.copy(alpha = 0.7f)) },
             confirmButton = {
                 TextButton(onClick = { 
                     matches.forEach { viewModel.updateScore(it.matchId, 0, 0) }
@@ -109,15 +108,11 @@ fun MatchResultCard(homeName: String, awayName: String, homeScore: Int, awayScor
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Home Team
             Column(modifier = Modifier.weight(1f)) {
                 Text(homeName, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
                 ScoreStepper(score = homeScore, onValueChange = { onScoreChange(it, awayScore) })
             }
-
             Text("VS", color = Color(0xFFD4AF37).copy(alpha = 0.3f), modifier = Modifier.padding(horizontal = 4.dp), fontSize = 10.sp)
-
-            // Away Team
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                 Text(awayName, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.End)
                 ScoreStepper(score = awayScore, onValueChange = { onScoreChange(homeScore, it) })
@@ -135,15 +130,7 @@ fun ScoreStepper(score: Int, onValueChange: (Int) -> Unit) {
         ) {
             Icon(Icons.Default.Remove, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
         }
-
-        Text(
-            text = "$score",
-            color = Color(0xFFD4AF37),
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 18.sp,
-            modifier = Modifier.padding(horizontal = 10.dp)
-        )
-
+        Text(text = "$score", color = Color(0xFFD4AF37), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, modifier = Modifier.padding(horizontal = 10.dp))
         IconButton(
             onClick = { onValueChange(score + 1) },
             modifier = Modifier.size(28.dp).background(Color.White.copy(0.1f), CircleShape)
