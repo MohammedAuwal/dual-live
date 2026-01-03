@@ -1,88 +1,119 @@
 package com.duallive.app.ucl2026.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.duallive.app.ucl2026.logic.Ucl26BracketTie
+import com.duallive.app.ucl2026.viewmodel.Ucl26ViewModel
+import com.duallive.app.ucl2026.model.BracketMatch
 
 @Composable
-fun Ucl26BracketScreen(r16Ties: List<Ucl26BracketTie>) {
-    val scrollState = rememberScrollState()
+fun Ucl26BracketScreen(viewModel: Ucl26ViewModel) {
+    val bracketMatches by viewModel.bracketMatches.collectAsState()
+    
+    val qf = bracketMatches.filter { it.roundName == "Quarter-Final" }
+    val sf = bracketMatches.filter { it.roundName == "Semi-Final" }
+    val fin = bracketMatches.filter { it.roundName == "FINAL" }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(NavyBackground)
-            .padding(top = 16.dp)
+            .background(Color(0xFF00122E))
+            .padding(16.dp)
     ) {
-        Text(
-            "KNOCKOUT BRACKET",
-            color = GoldAccent,
-            modifier = Modifier.padding(horizontal = 16.dp),
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Text("KNOCKOUT PHASE", color = Color(0xFFD4AF37), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .horizontalScroll(scrollState)
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(32.dp)
-        ) {
-            BracketColumn("ROUND OF 16", r16Ties)
-            BracketColumn("QUARTER-FINALS", List(4) { Ucl26BracketTie("QF", null, null) })
-            BracketColumn("SEMI-FINALS", List(2) { Ucl26BracketTie("SF", null, null) })
-            BracketColumn("FINAL", List(1) { Ucl26BracketTie("F", null, null) })
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            // QUARTER FINALS
+            if (qf.isNotEmpty()) {
+                item { RoundHeader("QUARTER-FINALS", onGenerate = { viewModel.generateSemiFinals() }) }
+                items(qf) { match -> BracketMatchCard(match) }
+            }
+
+            // SEMI FINALS
+            if (sf.isNotEmpty()) {
+                item { RoundHeader("SEMI-FINALS", onGenerate = { viewModel.generateFinal() }) }
+                items(sf) { match -> BracketMatchCard(match) }
+            }
+
+            // FINAL
+            if (fin.isNotEmpty()) {
+                item { Text("GRAND FINAL", color = Color(0xFFD4AF37), fontWeight = FontWeight.Bold) }
+                items(fin) { match -> BracketMatchCard(match, isFinal = true) }
+            }
         }
     }
 }
 
 @Composable
-fun BracketColumn(title: String, ties: List<Ucl26BracketTie>) {
-    Column(
-        verticalArrangement = Arrangement.SpaceAround,
-        modifier = Modifier.fillMaxHeight().width(200.dp)
-    ) {
-        Text(title, color = GoldAccent, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        ties.forEach { tie ->
-            BracketMatchCard(tie)
-        }
-    }
-}
-
-@Composable
-fun BracketMatchCard(tie: Ucl26BracketTie) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(GlassWhite, RoundedCornerShape(8.dp))
-            .padding(8.dp)
-    ) {
-        TeamLine(tie.teamAId?.toString() ?: "TBD")
-        Divider(color = Color.White.copy(alpha = 0.1f), thickness = 1.dp)
-        TeamLine(tie.teamBId?.toString() ?: "TBD")
-    }
-}
-
-@Composable
-fun TeamLine(name: String) {
+fun RoundHeader(title: String, onGenerate: () -> Unit) {
     Row(
-        modifier = Modifier.padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(8.dp).background(GoldAccent, RoundedCornerShape(2.dp)))
-        Spacer(Modifier.width(8.dp))
-        Text(name, color = Color.White, fontSize = 14.sp)
+        Text(title, color = Color(0xFFD4AF37), fontWeight = FontWeight.Bold)
+        Button(
+            onClick = onGenerate,
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37)),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+        ) {
+            Text("Next Stage", color = Color(0xFF00122E), fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+fun BracketMatchCard(match: BracketMatch, isFinal: Boolean = false) {
+    val win1 = match.isCompleted && match.aggregate1 > match.aggregate2
+    val win2 = match.isCompleted && match.aggregate2 > match.aggregate1
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0x1AFFFFFF)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            TeamRow(match.team1Name, if(isFinal) match.leg1Score1 else match.aggregate1, win1)
+            Spacer(modifier = Modifier.height(8.dp))
+            TeamRow(match.team2Name, if(isFinal) match.leg1Score2 else match.aggregate2, win2)
+        }
+    }
+}
+
+@Composable
+fun TeamRow(name: String, score: Int?, isWinner: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = name.uppercase(),
+            color = if (isWinner) Color.Green else Color.White,
+            fontWeight = if (isWinner) FontWeight.Bold else FontWeight.Normal,
+            fontSize = 14.sp
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (!isWinner && score != null) Text("AGG", color = Color(0xFFD4AF37), fontSize = 10.sp, modifier = Modifier.padding(end = 8.dp))
+            Text(
+                text = score?.toString() ?: "-",
+                color = if (isWinner) Color.Green else Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp
+            )
+        }
     }
 }

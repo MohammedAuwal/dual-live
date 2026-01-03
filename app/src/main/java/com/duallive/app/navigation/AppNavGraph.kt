@@ -19,6 +19,7 @@ import com.duallive.app.viewmodel.LeagueViewModel
 import com.duallive.app.ucl2026.ui.Ucl26RegistrationScreen
 import com.duallive.app.ucl2026.ui.Ucl26LeagueScreen
 import com.duallive.app.ucl2026.ui.Ucl26MatchScreen
+import com.duallive.app.ucl2026.ui.Ucl26BracketScreen
 import com.duallive.app.ucl2026.viewmodel.Ucl26ViewModel
 
 @Composable
@@ -36,7 +37,7 @@ fun AppNavGraph(
             HomeScreen(
                 onNavigateToClassic = { navController.navigate("classic_list") },
                 onNavigateToUCL = { navController.navigate("ucl_list") },
-                onNavigateToNewUCL = { navController.navigate("new_ucl_team_registration") }, // Link to new system
+                onNavigateToNewUCL = { navController.navigate("new_ucl_team_registration") },
                 onJoinSubmit = { code -> println("Joining league with code: $code") }
             )
         }
@@ -53,7 +54,7 @@ fun AppNavGraph(
             )
         }
 
-        // --- OLD UCL VERSION (Kept for compatibility) ---
+        // --- OLD UCL VERSION ---
         composable("ucl_list") {
             val leagues by leagueViewModel.getLeaguesByType(LeagueType.UCL).observeAsState(initial = emptyList())
             LeagueListScreen(
@@ -82,7 +83,7 @@ fun AppNavGraph(
             )
         }
 
-        // --- NEW UCL 2026 REGISTRATION ---
+        // --- NEW UCL 2026: REGISTRATION ---
         composable("new_ucl_team_registration") {
             Ucl26RegistrationScreen(onTeamsConfirmed = { teamNames ->
                 ucl26ViewModel.initializeTournament(teamNames)
@@ -90,7 +91,7 @@ fun AppNavGraph(
             })
         }
 
-        // --- NEW UCL 2026 LEAGUE TABLE ---
+        // --- NEW UCL 2026: LEAGUE TABLE ---
         composable(
             "new_ucl_league/{leagueId}",
             arguments = listOf(navArgument("leagueId") { type = NavType.IntType })
@@ -103,9 +104,14 @@ fun AppNavGraph(
             )
         }
 
-        // --- NEW UCL 2026 MATCH CENTER ---
+        // --- NEW UCL 2026: MATCH CENTER ---
         composable("new_ucl_matches") {
-            Ucl26MatchScreen(navController = navController, viewModel = ucl26ViewModel)
+            Ucl26MatchCenterScreen(navController = navController, viewModel = ucl26ViewModel)
+        }
+
+        // --- NEW UCL 2026: KNOCKOUT BRACKET ---
+        composable("new_ucl_bracket") {
+            Ucl26BracketScreen(viewModel = ucl26ViewModel)
         }
     }
 }
