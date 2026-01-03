@@ -125,7 +125,7 @@ class MainActivity : ComponentActivity() {
                                         activeLeagueType = LeagueType.CLASSIC
                                         currentScreen = "league_list" 
                                     },
-                                    onNavigateToUCL = { 
+                                    onNavigateToNewUCL = { }, onNavigateToUCL = { 
                                         activeLeagueType = LeagueType.UCL
                                         currentScreen = "league_list" 
                                     },

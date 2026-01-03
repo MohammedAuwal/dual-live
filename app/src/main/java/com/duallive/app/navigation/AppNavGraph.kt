@@ -3,7 +3,6 @@ package com.duallive.app.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -27,19 +26,22 @@ fun AppNavGraph(
     navController: NavHostController,
     leagueViewModel: LeagueViewModel
 ) {
+    // ViewModel for the new 36-team Swiss system
     val ucl26ViewModel: Ucl26ViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = "home") {
 
+        // --- HOME SCREEN ---
         composable("home") {
             HomeScreen(
                 onNavigateToClassic = { navController.navigate("classic_list") },
                 onNavigateToUCL = { navController.navigate("ucl_list") },
-                onNavigateToNewUCL = { navController.navigate("new_ucl_team_registration") },
+                onNavigateToNewUCL = { navController.navigate("new_ucl_team_registration") }, // Link to new system
                 onJoinSubmit = { code -> println("Joining league with code: $code") }
             )
         }
 
+        // --- CLASSIC LEAGUE ---
         composable("classic_list") {
             val leagues by leagueViewModel.getLeaguesByType(LeagueType.CLASSIC).observeAsState(initial = emptyList())
             LeagueListScreen(
@@ -51,6 +53,7 @@ fun AppNavGraph(
             )
         }
 
+        // --- OLD UCL VERSION (Kept for compatibility) ---
         composable("ucl_list") {
             val leagues by leagueViewModel.getLeaguesByType(LeagueType.UCL).observeAsState(initial = emptyList())
             LeagueListScreen(
@@ -62,6 +65,7 @@ fun AppNavGraph(
             )
         }
 
+        // --- CREATE LEAGUE FLOW ---
         composable(
             route = "create_league/{leagueType}",
             arguments = listOf(navArgument("leagueType") { type = NavType.StringType })
@@ -78,6 +82,7 @@ fun AppNavGraph(
             )
         }
 
+        // --- NEW UCL 2026 REGISTRATION ---
         composable("new_ucl_team_registration") {
             Ucl26RegistrationScreen(onTeamsConfirmed = { teamNames ->
                 ucl26ViewModel.initializeTournament(teamNames)
@@ -85,6 +90,7 @@ fun AppNavGraph(
             })
         }
 
+        // --- NEW UCL 2026 LEAGUE TABLE ---
         composable(
             "new_ucl_league/{leagueId}",
             arguments = listOf(navArgument("leagueId") { type = NavType.IntType })
@@ -97,6 +103,7 @@ fun AppNavGraph(
             )
         }
 
+        // --- NEW UCL 2026 MATCH CENTER ---
         composable("new_ucl_matches") {
             Ucl26MatchScreen(navController = navController, viewModel = ucl26ViewModel)
         }
