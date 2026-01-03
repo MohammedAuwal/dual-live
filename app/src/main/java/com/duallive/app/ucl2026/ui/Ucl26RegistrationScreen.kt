@@ -35,6 +35,7 @@ fun Ucl26RegistrationScreen(
             placeholder = { Text("Team 1\nTeam 2...", color = Color.Gray) },
             colors = TextFieldDefaults.colors(
                 unfocusedContainerColor = Color(0x1AFFFFFF),
+                focusedContainerColor = Color(0x1AFFFFFF),
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White
             )
