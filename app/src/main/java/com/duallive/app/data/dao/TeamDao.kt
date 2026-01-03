@@ -14,4 +14,7 @@ interface TeamDao {
 
     @Delete
     suspend fun deleteTeam(team: Team)
+
+    @Query("SELECT COUNT(*) FROM teams WHERE leagueId = :leagueId")
+    suspend fun getTeamCountForLeague(leagueId: Int): Int
 }
