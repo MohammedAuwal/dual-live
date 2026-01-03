@@ -25,11 +25,9 @@ import com.duallive.app.ucl2026.viewmodel.Ucl26ViewModel
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    leagueViewModel: LeagueViewModel
+    leagueViewModel: LeagueViewModel,
+    ucl26ViewModel: Ucl26ViewModel = viewModel()
 ) {
-    // ViewModel for the new 36-team Swiss system
-    val ucl26ViewModel: Ucl26ViewModel = viewModel()
-
     NavHost(navController = navController, startDestination = "home") {
 
         // --- HOME SCREEN ---
@@ -99,19 +97,26 @@ fun AppNavGraph(
             val leagueId = backStackEntry.arguments?.getInt("leagueId") ?: 0
             Ucl26LeagueScreen(
                 leagueId = leagueId,
-                navController = navController,
-                viewModel = ucl26ViewModel
+                viewModel = ucl26ViewModel,
+                onNavigateToMatches = { navController.navigate("new_ucl_matches") },
+                onNavigateToBracket = { navController.navigate("new_ucl_bracket") }
             )
         }
 
         // --- NEW UCL 2026: MATCH CENTER ---
         composable("new_ucl_matches") {
-            Ucl26MatchScreen(navController = navController, viewModel = ucl26ViewModel)
+            Ucl26MatchScreen(
+                viewModel = ucl26ViewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
 
         // --- NEW UCL 2026: KNOCKOUT BRACKET ---
         composable("new_ucl_bracket") {
-            Ucl26BracketScreen(viewModel = ucl26ViewModel)
+            Ucl26BracketScreen(
+                viewModel = ucl26ViewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }
