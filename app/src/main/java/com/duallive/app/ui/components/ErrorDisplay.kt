@@ -1,6 +1,5 @@
 package com.duallive.app.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,7 +17,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ErrorDisplay(message: String, onRetry: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0x33FF0000)), // Transparent Red
+        colors = CardDefaults.cardColors(containerColor = Color(0x33FF0000)),
         shape = RoundedCornerShape(16.dp),
         modifier = Modifier.padding(16.dp).fillMaxWidth()
     ) {
@@ -26,7 +25,13 @@ fun ErrorDisplay(message: String, onRetry: () -> Unit) {
             modifier = Modifier.padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(Icons.Default.Warning, contentDescription = null, tint = Color.Red, size = 48.dp)
+            // FIXED: Moved size into the modifier parameter
+            Icon(
+                imageVector = Icons.Default.Warning, 
+                contentDescription = null, 
+                tint = Color.Red, 
+                modifier = Modifier.size(48.dp)
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Oops! Something went wrong",
