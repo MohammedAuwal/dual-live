@@ -5,10 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,11 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.duallive.app.ucl2026.viewmodel.Ucl26ViewModel
 
-private val LocalNavy = Color(0xFF00122E)
-private val LocalGold = Color(0xFFD4AF37)
-private val LocalGlass = Color(0x1AFFFFFF)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Ucl26LeagueScreen(
     leagueId: Int,
@@ -31,74 +22,79 @@ fun Ucl26LeagueScreen(
     onNavigateToMatches: () -> Unit,
     onNavigateToBracket: () -> Unit
 ) {
-    val teams by viewModel.standings.collectAsState()
-    val round by viewModel.currentRound.collectAsState()
+    val standings by viewModel.standings.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(
-                        text = if (round <= 8) "ROUND $round / 8" else "LEAGUE FINISHED", 
-                        color = LocalGold, 
-                        fontWeight = FontWeight.Bold
-                    ) 
-                },
-                actions = {
-                    IconButton(onClick = { 
-                        if (round < 8) {
-                            viewModel.nextRound()
-                        } else {
-                            viewModel.nextRound() 
-                            onNavigateToBracket()
-                        }
-                    }) {
-                        Icon(
-                            imageVector = if (round < 8) Icons.Default.Refresh else Icons.Default.AccountTree, 
-                            contentDescription = "Next Round", 
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = LocalNavy)
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { onNavigateToMatches() },
-                containerColor = LocalGold
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = "Scores", tint = LocalNavy)
-            }
-        },
-        containerColor = LocalNavy
-    ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(LocalGlass, RoundedCornerShape(8.dp))
-                    .padding(8.dp)
-            ) {
-                Text("POS", Modifier.weight(0.12f), color = LocalGold, fontWeight = FontWeight.Bold)
-                Text("TEAM", Modifier.weight(0.5f), color = LocalGold, fontWeight = FontWeight.Bold)
-                Text("GD", Modifier.weight(0.15f), color = LocalGold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                Text("PTS", Modifier.weight(0.15f), color = LocalGold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            }
+    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF00122E)).padding(16.dp)) {
+        Text("UCL SWISS STANDINGS", color = Color(0xFFD4AF37), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        
+        Spacer(modifier = Modifier.height(10.dp))
+        
+        // Key/Legend
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            LegendItem("TOP 8 (R16)", Color(0xFF4CAF50))
+            LegendItem("PLAY-OFFS", Color(0xFF2196F3))
+            LegendItem("OUT", Color(0xFFF44336))
+        }
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 8.dp)) {
-                itemsIndexed(teams) { index, team ->
-                    val pos = index + 1
-                    Card(colors = CardDefaults.cardColors(containerColor = LocalGlass)) {
-                        Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text("$pos", Modifier.weight(0.12f), color = if(pos <= 8) Color.Green else Color.White)
-                            Text(team.teamName.uppercase(), Modifier.weight(0.5f), color = Color.White, fontSize = 13.sp)
-                            Text("${team.goalDifference}", Modifier.weight(0.15f), color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                            Text("${team.points}", Modifier.weight(0.15f), color = LocalGold, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                        }
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Table Header
+        Row(modifier = Modifier.fillMaxWidth().background(Color.White.copy(0.05f)).padding(8.dp)) {
+            Text("Pos", color = Color.White.copy(0.6f), modifier = Modifier.width(35.dp), fontSize = 12.sp)
+            Text("Team", color = Color.White.copy(0.6f), modifier = Modifier.weight(1f), fontSize = 12.sp)
+            Text("GD", color = Color.White.copy(0.6f), modifier = Modifier.width(35.dp), fontSize = 12.sp)
+            Text("Pts", color = Color.White.copy(0.6f), modifier = Modifier.width(35.dp), fontSize = 12.sp)
+        }
+
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            itemsIndexed(standings) { index, team ->
+                val pos = index + 1
+                val rowColor = when {
+                    pos <= 8 -> Color(0xFF4CAF50).copy(alpha = 0.1f)   // Green tint for Top 8
+                    pos <= 24 -> Color(0xFF2196F3).copy(alpha = 0.1f)  // Blue tint for Play-offs
+                    else -> Color(0xFFF44336).copy(alpha = 0.1f)       // Red tint for Eliminated
+                }
+                
+                val indicatorColor = when {
+                    pos <= 8 -> Color(0xFF4CAF50)
+                    pos <= 24 -> Color(0xFF2196F3)
+                    else -> Color(0xFFF44336)
+                }
+
+                Surface(
+                    color = rowColor,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.width(4.dp).height(20.dp).background(indicatorColor)) // Color bar
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("$pos", color = Color.White, modifier = Modifier.width(25.dp), fontWeight = FontWeight.Bold)
+                        Text(team.teamName, color = Color.White, modifier = Modifier.weight(1f))
+                        Text("${team.goalDifference}", color = Color.White.copy(0.7f), modifier = Modifier.width(35.dp))
+                        Text("${team.points}", color = Color(0xFFD4AF37), modifier = Modifier.width(35.dp), fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
+
+        // Navigation Buttons
+        Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = onNavigateToMatches, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37))) {
+                Text("MATCHES", color = Color(0xFF00122E))
+            }
+            Button(onClick = onNavigateToBracket, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(0.1f))) {
+                Text("BRACKET", color = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
+fun LegendItem(text: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(8.dp).background(color, RoundedCornerShape(2.dp)))
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(text, color = Color.White.copy(0.6f), fontSize = 10.sp)
     }
 }
