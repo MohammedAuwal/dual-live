@@ -41,7 +41,6 @@ class MainActivity : ComponentActivity() {
             var selectedLeague by remember { mutableStateOf<League?>(null) }
             var activeLeagueType by rememberSaveable { mutableStateOf(LeagueType.CLASSIC) }
             var showAddTeamDialog by remember { mutableStateOf(false) }
-            var winnerName by remember { mutableStateOf<String?>(null) }
             
             var homeTeamForDisplay by remember { mutableStateOf<Team?>(null) }
             var awayTeamForDisplay by remember { mutableStateOf<Team?>(null) }
@@ -54,10 +53,9 @@ class MainActivity : ComponentActivity() {
 
             BackHandler(enabled = currentScreen != "home") {
                 currentScreen = when (currentScreen) {
-                    "ucl26_registration", "ucl26_league", "league_list", "create_league" -> "home"
+                    "ucl26_league", "league_list", "create_league" -> "home"
                     "team_list" -> "league_list"
                     "fixture_list", "match_history", "standings" -> "team_list"
-                    "live_display" -> "fixture_list"
                     else -> "home"
                 }
             }
@@ -90,37 +88,29 @@ class MainActivity : ComponentActivity() {
                         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                             when (currentScreen) {
                                 "home" -> HomeScreen(
-                                    onNavigateToClassic = { 
-                                        activeLeagueType = LeagueType.CLASSIC
-                                        currentScreen = "league_list" 
-                                    },
-                                    onNavigateToUCL = { 
-                                        activeLeagueType = LeagueType.UCL
-                                        currentScreen = "league_list" 
-                                    },
-                                    onNavigateToNewUCL = { currentScreen = "ucl26_registration" },
+                                    onNavigateToClassic = { activeLeagueType = LeagueType.CLASSIC; currentScreen = "league_list" },
+                                    onNavigateToUCL = { activeLeagueType = LeagueType.UCL; currentScreen = "league_list" },
+                                    onNavigateToNewUCL = { activeLeagueType = LeagueType.SWISS; currentScreen = "league_list" },
                                     onJoinSubmit = { }
                                 )
-
-                                "ucl26_registration" -> Ucl26RegistrationScreen(onTeamsConfirmed = { names ->
-                                    ucl26ViewModel.initializeTournament(names)
-                                    currentScreen = "ucl26_league"
-                                })
-                                "ucl26_league" -> Ucl26LeagueScreen(1, ucl26ViewModel, { currentScreen = "ucl26_matches" }, { currentScreen = "ucl26_bracket" })
-                                "ucl26_matches" -> Ucl26MatchScreen(ucl26ViewModel, { currentScreen = "ucl26_league" })
-                                "ucl26_bracket" -> Ucl26BracketScreen(ucl26ViewModel, { currentScreen = "ucl26_league" })
 
                                 "league_list" -> LeagueListScreen(
                                     leagues = filteredLeagues, 
                                     type = activeLeagueType, 
                                     onLeagueClick = { league -> 
                                         selectedLeague = league
-                                        currentStageLabel = if (league.name.contains("-")) league.name.substringAfter("- ").trim() else ""
-                                        currentScreen = "team_list" 
+                                        if (activeLeagueType == LeagueType.SWISS) {
+                                            // Handle Swiss UI logic here later
+                                            currentScreen = "ucl26_league" 
+                                        } else {
+                                            currentStageLabel = if (league.name.contains("-")) league.name.substringAfter("- ").trim() else ""
+                                            currentScreen = "team_list" 
+                                        }
                                     }, 
                                     onDeleteLeague = { league -> MainScope().launch { db.leagueDao().deleteLeague(league) } }, 
                                     onAddLeagueClick = { currentScreen = "create_league" }
                                 )
+
                                 "create_league" -> CreateLeagueScreen(
                                     preselectedType = activeLeagueType,
                                     onSave = { name, desc, homeAway, leagueType -> 
@@ -130,6 +120,14 @@ class MainActivity : ComponentActivity() {
                                         } 
                                     }
                                 )
+
+                                "ucl26_league" -> Ucl26LeagueScreen(
+                                    leagueId = selectedLeague?.id ?: 0, 
+                                    viewModel = ucl26ViewModel, 
+                                    onNavigateToMatches = { currentScreen = "ucl26_matches" }, 
+                                    onNavigateToBracket = { currentScreen = "ucl26_bracket" }
+                                )
+
                                 "team_list" -> {
                                     Scaffold(
                                         containerColor = Color.Transparent,
