@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,64 +16,93 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.duallive.app.ucl2026.model.Ucl26Match
 import com.duallive.app.ucl2026.viewmodel.Ucl26ViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Ucl26MatchScreen(
-    viewModel: Ucl26ViewModel,
-    onBack: () -> Unit
-) {
+fun Ucl26MatchScreen(viewModel: Ucl26ViewModel, onBack: () -> Unit) {
     val matches by viewModel.matches.collectAsState()
-    val teams by viewModel.standings.collectAsState()
+    val currentRound by viewModel.currentRound.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("MATCH CENTER", color = Color(0xFFD4AF37), fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { onBack() }) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF00122E))
-            )
-        },
-        containerColor = Color(0xFF00122E)
-    ) { paddingValues ->
-        Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
-            Text("UPDATE EFOOTBALL SCORES", color = Color.White.copy(0.6f), fontSize = 12.sp)
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 16.dp)) {
-                items(matches) { match ->
-                    val homeTeam = teams.find { it.teamId == match.homeTeamId }?.teamName ?: "Unknown"
-                    val awayTeam = teams.find { it.teamId == match.awayTeamId }?.teamName ?: "Unknown"
-                    MatchItem(match, homeTeam, awayTeam) { h, a -> viewModel.updateScore(match.matchId, h, a) }
+    Column(modifier = Modifier.fillMaxSize().background(Color(0xFF00122E))) {
+        // Header
+        SmallTopAppBar(
+            title = { Text("Round $currentRound Fixtures", color = Color.White) },
+            navigationIcon = {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
                 }
+            },
+            colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color.Transparent)
+        )
+
+        LazyColumn(
+            modifier = Modifier.weight(1f).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(matches) { match ->
+                MatchResultCard(
+                    homeName = "Team ${match.homeTeamId}", // We'll map names later
+                    awayName = "Team ${match.awayTeamId}",
+                    homeScore = match.homeScore,
+                    awayScore = match.awayScore,
+                    isPlayed = match.isPlayed,
+                    onScoreChange = { h, a -> 
+                        viewModel.updateScore(match.matchId, h, a)
+                    }
+                )
             }
+        }
+        
+        // Finalize Round Button
+        Button(
+            onClick = { viewModel.nextRound() },
+            modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37)),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("FINALIZE ROUND & RE-RANK", color = Color(0xFF00122E), fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-fun MatchItem(match: Ucl26Match, homeName: String, awayName: String, onUpdate: (Int, Int) -> Unit) {
-    var hScore by remember { mutableStateOf(match.homeScore?.toString() ?: "") }
-    var aScore by remember { mutableStateOf(match.awayScore?.toString() ?: "") }
-
-    Card(colors = CardDefaults.cardColors(containerColor = Color(0x1AFFFFFF)), shape = RoundedCornerShape(12.dp)) {
-        Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(homeName, color = Color.White, modifier = Modifier.weight(1f), fontSize = 14.sp)
-            TextField(value = hScore, onValueChange = { if(it.length <= 2) hScore = it }, modifier = Modifier.width(50.dp), colors = TextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent, focusedTextColor = Color.White, unfocusedTextColor = Color.White), singleLine = true)
-            Text("-", color = Color.White, modifier = Modifier.padding(horizontal = 4.dp))
-            TextField(value = aScore, onValueChange = { if(it.length <= 2) aScore = it }, modifier = Modifier.width(50.dp), colors = TextFieldDefaults.colors(unfocusedContainerColor = Color.Transparent, focusedTextColor = Color.White, unfocusedTextColor = Color.White), singleLine = true)
-            Text(awayName, color = Color.White, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End, fontSize = 14.sp)
-            IconButton(onClick = { 
-                val h = hScore.toIntOrNull()
-                val a = aScore.toIntOrNull()
-                if (h != null && a != null) onUpdate(h, a)
-            }) {
-                Icon(Icons.Default.CheckCircle, contentDescription = "Confirm", tint = if (match.isPlayed) Color(0xFF4CAF50) else Color.White.copy(0.3f))
+fun MatchResultCard(
+    homeName: String, 
+    awayName: String, 
+    homeScore: Int, 
+    awayScore: Int, 
+    isPlayed: Boolean,
+    onScoreChange: (Int, Int) -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0x1AFFFFFF)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(homeName, color = Color.White, modifier = Modifier.weight(1f))
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ScoreBox(homeScore)
+                Text("-", color = Color.White, modifier = Modifier.padding(horizontal = 8.dp))
+                ScoreBox(awayScore)
             }
+
+            Text(awayName, color = Color.White, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
         }
+    }
+}
+
+@Composable
+fun ScoreBox(score: Int) {
+    Box(
+        modifier = Modifier.size(36.dp).background(Color.White.copy(0.1f), RoundedCornerShape(4.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("$score", color = Color(0xFFD4AF37), fontWeight = FontWeight.Bold)
     }
 }
