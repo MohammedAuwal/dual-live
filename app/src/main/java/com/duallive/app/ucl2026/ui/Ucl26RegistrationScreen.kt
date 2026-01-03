@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.duallive.app.ucl2026.model.Ucl26Team
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,13 +32,11 @@ fun Ucl26RegistrationScreen(onTeamsConfirmed: (List<String>) -> Unit) {
                 Text("${teamList.size} / 36 Teams Added", color = Color(0xFFD4AF37), fontSize = 14.sp)
             }
             Row {
-                // Randomize Button
                 if (teamList.size == 36) {
                     IconButton(onClick = { teamList = teamList.shuffled() }, modifier = Modifier.padding(end = 8.dp).background(Color.White.copy(0.1f), RoundedCornerShape(8.dp))) {
                         Icon(Icons.Default.Shuffle, contentDescription = null, tint = Color.White)
                     }
                 }
-                // Add Button
                 IconButton(onClick = { showDialog = true }, modifier = Modifier.background(Color(0xFFD4AF37), RoundedCornerShape(8.dp))) {
                     Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF00122E))
                 }
@@ -92,7 +89,12 @@ fun Ucl26RegistrationScreen(onTeamsConfirmed: (List<String>) -> Unit) {
                         onValueChange = { inputText = it },
                         modifier = Modifier.fillMaxWidth().height(150.dp),
                         placeholder = { Text("Example: Real Madrid, Man City...", color = Color.White.copy(0.3f)) },
-                        colors = TextFieldDefaults.outlinedTextFieldColors(focusedBorderColor = Color(0xFFD4AF37), unfocusedTextColor = Color.White, focusedTextColor = Color.White)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFD4AF37),
+                            unfocusedBorderColor = Color.White.copy(0.3f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
                     )
                 }
             },
@@ -107,7 +109,9 @@ fun Ucl26RegistrationScreen(onTeamsConfirmed: (List<String>) -> Unit) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) { Text("CANCEL", color = Color.White) }
+                TextButton(onClick = { showDialog = false }) {
+                    Text("CANCEL", color = Color.White)
+                }
             }
         )
     }

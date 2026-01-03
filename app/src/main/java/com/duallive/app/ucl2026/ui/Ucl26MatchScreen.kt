@@ -7,13 +7,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.duallive.app.ucl2026.viewmodel.Ucl26ViewModel
@@ -25,15 +25,15 @@ fun Ucl26MatchScreen(viewModel: Ucl26ViewModel, onBack: () -> Unit) {
     val currentRound by viewModel.currentRound.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFF00122E))) {
-        // Header
-        SmallTopAppBar(
+        // Updated to stable TopAppBar
+        TopAppBar(
             title = { Text("Round $currentRound Fixtures", color = Color.White) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(Icons.Default.ArrowBack, contentDescription = null, tint = Color.White)
                 }
             },
-            colors = TopAppBarDefaults.smallTopAppBarColors(containerColor = Color.Transparent)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
         )
 
         LazyColumn(
@@ -42,7 +42,7 @@ fun Ucl26MatchScreen(viewModel: Ucl26ViewModel, onBack: () -> Unit) {
         ) {
             items(matches) { match ->
                 MatchResultCard(
-                    homeName = "Team ${match.homeTeamId}", // We'll map names later
+                    homeName = "Team ${match.homeTeamId}", 
                     awayName = "Team ${match.awayTeamId}",
                     homeScore = match.homeScore,
                     awayScore = match.awayScore,
@@ -54,7 +54,6 @@ fun Ucl26MatchScreen(viewModel: Ucl26ViewModel, onBack: () -> Unit) {
             }
         }
         
-        // Finalize Round Button
         Button(
             onClick = { viewModel.nextRound() },
             modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
@@ -92,7 +91,7 @@ fun MatchResultCard(
                 ScoreBox(awayScore)
             }
 
-            Text(awayName, color = Color.White, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.End)
+            Text(awayName, color = Color.White, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
         }
     }
 }

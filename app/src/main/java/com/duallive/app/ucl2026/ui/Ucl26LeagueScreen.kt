@@ -50,9 +50,9 @@ fun Ucl26LeagueScreen(
             itemsIndexed(standings) { index, team ->
                 val pos = index + 1
                 val rowColor = when {
-                    pos <= 8 -> Color(0xFF4CAF50).copy(alpha = 0.1f)   // Green tint for Top 8
-                    pos <= 24 -> Color(0xFF2196F3).copy(alpha = 0.1f)  // Blue tint for Play-offs
-                    else -> Color(0xFFF44336).copy(alpha = 0.1f)       // Red tint for Eliminated
+                    pos <= 8 -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                    pos <= 24 -> Color(0xFF2196F3).copy(alpha = 0.1f)
+                    else -> Color(0xFFF44336).copy(alpha = 0.1f)
                 }
                 
                 val indicatorColor = when {
@@ -67,7 +67,7 @@ fun Ucl26LeagueScreen(
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Row(modifier = Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.width(4.dp).height(20.dp).background(indicatorColor)) // Color bar
+                        Box(modifier = Modifier.width(4.dp).height(20.dp).background(indicatorColor))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("$pos", color = Color.White, modifier = Modifier.width(25.dp), fontWeight = FontWeight.Bold)
                         Text(team.teamName, color = Color.White, modifier = Modifier.weight(1f))
@@ -80,11 +80,21 @@ fun Ucl26LeagueScreen(
 
         // Navigation Buttons
         Row(modifier = Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onNavigateToMatches, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37))) {
-                Text("MATCHES", color = Color(0xFF00122E))
+            Button(
+                onClick = onNavigateToMatches, 
+                modifier = Modifier.weight(1f), 
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD4AF37)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("MATCHES", color = Color(0xFF00122E), fontWeight = FontWeight.Bold)
             }
-            Button(onClick = onNavigateToBracket, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(0.1f))) {
-                Text("BRACKET", color = Color.White)
+            Button(
+                onClick = onNavigateToBracket, 
+                modifier = Modifier.weight(1f), 
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(0.1f)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("BRACKET", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }
