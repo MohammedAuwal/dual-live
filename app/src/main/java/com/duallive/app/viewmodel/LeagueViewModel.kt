@@ -5,7 +5,6 @@ import com.duallive.app.data.LeagueRepository
 import com.duallive.app.data.entity.League
 import com.duallive.app.data.entity.LeagueType
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class LeagueViewModel(private val repository: LeagueRepository) : ViewModel() {
 

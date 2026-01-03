@@ -8,5 +8,9 @@ class Converters {
     fun fromLeagueType(value: LeagueType): String = value.name
 
     @TypeConverter
-    fun toLeagueType(value: String): LeagueType = LeagueType.valueOf(value)
+    fun toLeagueType(value: String): LeagueType = try {
+        LeagueType.valueOf(value)
+    } catch (e: Exception) {
+        LeagueType.CLASSIC
+    }
 }

@@ -12,9 +12,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.duallive.app.ui.league.*
 import com.duallive.app.ui.team.*
@@ -42,11 +39,6 @@ class MainActivity : ComponentActivity() {
             var activeLeagueType by rememberSaveable { mutableStateOf(LeagueType.CLASSIC) }
             var showAddTeamDialog by remember { mutableStateOf(false) }
             
-            var homeTeamForDisplay by remember { mutableStateOf<Team?>(null) }
-            var awayTeamForDisplay by remember { mutableStateOf<Team?>(null) }
-            var homeScore by remember { mutableStateOf(0) }
-            var awayScore by remember { mutableStateOf(0) }
-            var generatedFixtures by remember { mutableStateOf<List<Fixture>>(emptyList()) }
             var currentStageLabel by rememberSaveable { mutableStateOf("") }
 
             val ucl26ViewModel: Ucl26ViewModel = viewModel()
@@ -55,7 +47,8 @@ class MainActivity : ComponentActivity() {
                 currentScreen = when (currentScreen) {
                     "ucl26_registration", "ucl26_league", "league_list", "create_league" -> "home"
                     "team_list" -> "league_list"
-                    "fixture_list", "match_history", "standings" -> "team_list"
+                    "ucl26_matches", "ucl26_bracket" -> "ucl26_league"
+                    "standings", "match_history" -> "team_list"
                     else -> "home"
                 }
             }
@@ -63,7 +56,6 @@ class MainActivity : ComponentActivity() {
             val leagues by db.leagueDao().getAllLeagues().collectAsState(initial = emptyList())
             val filteredLeagues = leagues.filter { it.type == activeLeagueType }
 
-            // Reactive data fetching
             val teams by if (selectedLeague != null) {
                 db.teamDao().getTeamsByLeague(selectedLeague!!.id).collectAsState(initial = emptyList())
             } else {
@@ -101,7 +93,6 @@ class MainActivity : ComponentActivity() {
                                     onLeagueClick = { league -> 
                                         selectedLeague = league
                                         if (activeLeagueType == LeagueType.SWISS) {
-                                            // Safety check: If league exists but has no teams, go to registration
                                             MainScope().launch {
                                                 val teamCount = db.teamDao().getTeamCountForLeague(league.id)
                                                 currentScreen = if (teamCount < 36) "ucl26_registration" else "ucl26_league"
@@ -115,12 +106,30 @@ class MainActivity : ComponentActivity() {
                                     onAddLeagueClick = { currentScreen = "create_league" }
                                 )
 
+                                "create_league" -> CreateLeagueScreen(
+                                    preselectedType = activeLeagueType,
+                                    onSave = { name, desc, homeAway, leagueType -> 
+                                        MainScope().launch { 
+                                            db.leagueDao().insertLeague(League(
+                                                name = name, 
+                                                description = desc, 
+                                                isHomeAndAway = homeAway, 
+                                                type = leagueType,
+                                                inviteCode = "DL-${(1000..9999).random()}"
+                                            ))
+                                            currentScreen = "league_list" 
+                                        } 
+                                    },
+                                    onBack = { currentScreen = "league_list" }
+                                )
+
                                 "ucl26_registration" -> Ucl26RegistrationScreen(onTeamsConfirmed = { names ->
                                     MainScope().launch {
-                                        // Save teams to DB so they persist offline
-                                        names.forEach { db.teamDao().insertTeam(Team(leagueId = selectedLeague!!.id, name = it)) }
-                                        ucl26ViewModel.initializeTournament(names)
-                                        currentScreen = "ucl26_league"
+                                        selectedLeague?.let { league ->
+                                            names.forEach { db.teamDao().insertTeam(Team(leagueId = league.id, name = it)) }
+                                            ucl26ViewModel.initializeTournament(names)
+                                            currentScreen = "ucl26_league"
+                                        }
                                     }
                                 })
 
@@ -131,19 +140,19 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToBracket = { currentScreen = "ucl26_bracket" }
                                 )
 
-                                // ... rest of the screens (team_list, fixture_list, etc.) remain as you provided
-                                "team_list" -> {
-                                    TeamListScreen(
-                                        leagueName = selectedLeague?.name ?: "",
-                                        inviteCode = selectedLeague?.inviteCode ?: "DL-0000",
-                                        teams = teams,
-                                        isUcl = selectedLeague?.type == LeagueType.UCL,
-                                        onBack = { currentScreen = "league_list" },
-                                        onAddTeamClick = { showAddTeamDialog = true },
-                                        onUpdateTeam = { updatedTeam -> MainScope().launch { db.teamDao().insertTeam(updatedTeam) } }
-                                    )
-                                    // ... Dialog logic
-                                }
+                                "ucl26_matches" -> Ucl26MatchScreen(viewModel = ucl26ViewModel, onBack = { currentScreen = "ucl26_league" })
+                                
+                                "ucl26_bracket" -> Ucl26BracketScreen(viewModel = ucl26ViewModel, onBack = { currentScreen = "ucl26_league" })
+
+                                "team_list" -> TeamListScreen(
+                                    leagueName = selectedLeague?.name ?: "",
+                                    inviteCode = selectedLeague?.inviteCode ?: "DL-0000",
+                                    teams = teams,
+                                    isUcl = selectedLeague?.type == LeagueType.UCL,
+                                    onBack = { currentScreen = "league_list" },
+                                    onAddTeamClick = { showAddTeamDialog = true },
+                                    onUpdateTeam = { updatedTeam -> MainScope().launch { db.teamDao().insertTeam(updatedTeam) } }
+                                )
                                 "standings" -> StandingsScreen(teams, standings)
                                 "match_history" -> MatchHistoryScreen(matches, teams, { m -> MainScope().launch { db.matchDao().deleteMatch(m) } }, { m -> MainScope().launch { db.matchDao().insertMatch(m) } }, { currentScreen = "team_list" })
                             }

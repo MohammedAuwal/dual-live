@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LeagueDao {
-    // This is the CRITICAL method for the Dual-Dashboard logic
     @Query("SELECT * FROM leagues WHERE type = :type ORDER BY id DESC")
     fun getLeaguesByType(type: LeagueType): Flow<List<League>>
 

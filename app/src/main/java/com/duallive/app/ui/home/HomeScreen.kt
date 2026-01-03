@@ -47,6 +47,7 @@ fun HomeScreen(
             }
         }
 
+        // CLASSIC
         item {
             GlassCard(
                 modifier = Modifier.clickable { onNavigateToClassic() },
@@ -63,6 +64,7 @@ fun HomeScreen(
             }
         }
 
+        // UCL (GROUPS)
         item {
             GlassCard(
                 modifier = Modifier.clickable { onNavigateToUCL() },
@@ -79,27 +81,28 @@ fun HomeScreen(
             }
         }
 
+        // NEW UCL (SWISS)
         item {
-            // FIX: Explicitly handling the click inside a Box to ensure the lambda triggers
             GlassCard(
-                tintColor = Color(0xFF00BFFF)
+                tintColor = Color(0xFFD4AF37) // Changed to Gold to match Swiss branding
             ) {
                 Box(modifier = Modifier.fillMaxWidth().clickable { onNavigateToNewUCL() }) {
                     Row(
                         modifier = Modifier.padding(vertical = 4.dp), 
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFF00BFFF), modifier = Modifier.size(48.dp))
+                        Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFFD4AF37), modifier = Modifier.size(48.dp))
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             Text("New UCL League", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                            Text("Swiss / Dynamic league tracking", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+                            Text("Swiss System • 36 Teams", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
                         }
                     }
                 }
             }
         }
 
+        // JOIN SECTION
         item {
             GlassCard {
                 Text("Join a Tournament", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
