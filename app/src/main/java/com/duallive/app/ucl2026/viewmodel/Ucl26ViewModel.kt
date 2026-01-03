@@ -18,7 +18,6 @@ class Ucl26ViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentRound = MutableStateFlow(1)
     val currentRound: StateFlow<Int> = _currentRound.asStateFlow()
 
-    // Automatic Standings Calculation
     val standings: StateFlow<List<Ucl26Team>> = combine(_teams, _matches) { teams, matches ->
         val statsMap = teams.associateBy({ it.teamId }, { it.copy(points = 0, goalsScored = 0, goalsConceded = 0, matchesPlayed = 0) }).toMutableMap()
         matches.filter { it.isPlayed }.forEach { match ->
@@ -52,18 +51,16 @@ class Ucl26ViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- NEW: BRACKET SCORE UPDATE ---
     fun updateBracketScore(matchId: Int, s1: Int, s2: Int) {
         _bracketMatches.value = _bracketMatches.value.map {
-            if (it.id == matchId) {
-                // Update leg 1 scores (Standard for simple knockout)
-                it.copy(leg1Score1 = s1, leg1Score2 = s2, isCompleted = (s1 != s2))
-            } else it
+            // FIXED: Using isFinished instead of isCompleted to match Ucl26Models.kt
+            if (it.id == matchId) it.copy(leg1Score1 = s1, leg1Score2 = s2, isFinished = (s1 != s2))
+            else it
         }
     }
 
     fun generateRoundFixtures(round: Int) {
-        val currentStandings = _standingsManual() 
+        val currentStandings = _teams.value.sortedByDescending { it.points }
         val newMatches = mutableListOf<Ucl26Match>()
         for (i in 0 until currentStandings.size step 2) {
             if (i + 1 < currentStandings.size) {
@@ -71,11 +68,6 @@ class Ucl26ViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         _matches.value = _matches.value + newMatches
-    }
-
-    private fun _standingsManual(): List<Ucl26Team> {
-        // Quick helper for internal fixture generation
-        return _teams.value.sortedByDescending { it.points } 
     }
 
     fun nextRound() {
@@ -88,7 +80,7 @@ class Ucl26ViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun generatePlayoffDraw() {
-        val sorted = _standingsManual()
+        val sorted = _teams.value.sortedByDescending { it.points }
         if (sorted.size >= 24) {
             val playoffPairs = mutableListOf<BracketMatch>()
             val seeds = sorted.subList(8, 24)
