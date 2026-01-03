@@ -3,12 +3,13 @@ package com.duallive.app.ucl2026.model
 data class Ucl26Team(
     val teamId: Int,
     val teamName: String,
-    var matchesPlayed: Int = 0,
-    var points: Int = 0,
-    var goalsFor: Int = 0,
-    var goalsAgainst: Int = 0,
-    var goalDifference: Int = 0
-)
+    val matchesPlayed: Int = 0,
+    val goalsScored: Int = 0,
+    val goalsConceded: Int = 0,
+    val points: Int = 0
+) {
+    val goalDifference: Int get() = goalsScored - goalsConceded
+}
 
 data class Ucl26Match(
     val matchId: Int,
@@ -21,9 +22,15 @@ data class Ucl26Match(
 
 data class BracketMatch(
     val id: Int,
+    val roundName: String = "R16",
     val team1Name: String,
     val team2Name: String,
-    var aggregate1: Int = 0,
-    var aggregate2: Int = 0,
+    var leg1Score1: Int = 0,
+    var leg1Score2: Int = 0,
+    var leg2Score1: Int = 0,
+    var leg2Score2: Int = 0,
     var isFinished: Boolean = false
-)
+) {
+    val aggregate1: Int get() = leg1Score1 + (if (roundName != "Final") leg2Score1 else 0)
+    val aggregate2: Int get() = leg1Score2 + (if (roundName != "Final") leg2Score2 else 0)
+}
