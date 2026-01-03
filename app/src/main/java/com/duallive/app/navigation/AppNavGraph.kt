@@ -47,7 +47,7 @@ fun AppNavGraph(
                 leagues = leagues,
                 type = LeagueType.CLASSIC,
                 onAddLeagueClick = { navController.navigate("create_league/CLASSIC") },
-                onLeagueClick = { },
+                onLeagueClick = { /* Handle Click */ },
                 onDeleteLeague = { leagueViewModel.deleteLeague(it) }
             )
         }
@@ -59,7 +59,7 @@ fun AppNavGraph(
                 leagues = leagues,
                 type = LeagueType.UCL,
                 onAddLeagueClick = { navController.navigate("create_league/UCL") },
-                onLeagueClick = { },
+                onLeagueClick = { /* Handle Click */ },
                 onDeleteLeague = { leagueViewModel.deleteLeague(it) }
             )
         }
@@ -77,7 +77,8 @@ fun AppNavGraph(
                 onSave = { name, desc, isHA, type ->
                     leagueViewModel.createLeague(name, desc, isHA, type)
                     navController.popBackStack()
-                }
+                },
+                onBack = { navController.popBackStack() } // FIXED: Added missing parameter
             )
         }
 
