@@ -1,16 +1,9 @@
-package com.duallive.app.ucl2026.ui
+package com.duallive.app.ui.ucl_new
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,99 +12,122 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.duallive.app.ucl2026.model.Ucl26Team
+import com.duallive.app.viewmodel.TeamViewModel
 
+// --- THEME COLORS ---
+val NavyBackground = Color(0xFF00122E)
+val AncientGold = Color(0xFFD4AF37)
+val GlassWhite = Color(0x1AFFFFFF)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Ucl26TeamRegistrationScreen(
-    availableTeams: List<Ucl26Team>,
-    onTeamSelected: (Ucl26Team) -> Unit
+fun NewUclTeamRegistrationScreen(
+    teamViewModel: TeamViewModel,
+    onTeamsRegistered: (Int) -> Unit
 ) {
-    var selectedCount by remember { mutableIntStateOf(0) }
+    var rawInput by remember { mutableStateOf("") }
+    
+    // Logic to count lines (teams)
+    val teamList = rawInput.split("\n").filter { it.isNotBlank() }
+    val currentCount = teamList.size
+    val requiredCount = 36
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(NavyBackground)
-            .padding(16.dp)
+            .padding(20.dp)
     ) {
-        // Header with Counter
+        // --- HEADER ---
+        Text(
+            text = "UCL 2026 REGISTRATION",
+            color = AncientGold,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.5.sp
+        )
+        
+        Text(
+            text = "Bulk import teams for your eFootball league",
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 14.sp,
+            modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
+        )
+
+        // --- GLASSMORPHIC INPUT BOX ---
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(GlassWhite, RoundedCornerShape(16.dp))
+                .border(1.dp, AncientGold.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                .padding(4.dp)
+        ) {
+            TextField(
+                value = rawInput,
+                onValueChange = { rawInput = it },
+                modifier = Modifier.fillMaxSize(),
+                placeholder = { 
+                    Text(
+                        "Paste your 36 teams here...\n(One team per line)", 
+                        color = Color.Gray 
+                    ) 
+                },
+                colors = TextFieldDefaults.textFieldColors(
+                    containerColor = Color.Transparent,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = AncientGold,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // --- STATUS & PROCEED BUTTON ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("TEAM REGISTRATION", color = GoldAccent, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text("Select 36 Teams for the Season", color = Color.Gray, fontSize = 12.sp)
+                Text(
+                    text = "Teams Detected: $currentCount",
+                    color = if (currentCount == requiredCount) Color.Green else Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (currentCount < requiredCount) "Need ${requiredCount - currentCount} more" 
+                           else if (currentCount > requiredCount) "Too many teams!" 
+                           else "Ready to generate league",
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
             }
-            
-            // Modern Counter Circle
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .background(GlassWhite, CircleShape)
-                    .border(2.dp, if (selectedCount == 36) Color.Green else GoldAccent, CircleShape),
-                contentAlignment = Alignment.Center
+
+            Button(
+                onClick = { 
+                    if (currentCount == requiredCount) {
+                        // Here we simulate saving and returning a leagueId of 1 for now
+                        onTeamsRegistered(1) 
+                    }
+                },
+                enabled = currentCount == requiredCount,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AncientGold,
+                    disabledContainerColor = Color.Gray.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(50.dp)
             ) {
-                Text("$selectedCount", color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    "START LEAGUE", 
+                    color = NavyBackground, 
+                    fontWeight = FontWeight.Black 
+                )
             }
         }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // Pot Legend
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PotChip("Pot 1", Color(0xFFE91E63))
-            PotChip("Pot 2", Color(0xFF2196F3))
-            PotChip("Pot 3", Color(0xFFFF9800))
-            PotChip("Pot 4", Color(0xFF9C27B0))
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(availableTeams) { team ->
-                TeamSelectCard(team) {
-                    onTeamSelected(team)
-                    selectedCount++
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun PotChip(label: String, color: Color) {
-    Surface(
-        color = color.copy(alpha = 0.2f),
-        shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, color)
-    ) {
-        Text(label, color = color, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
-    }
-}
-
-@Composable
-fun TeamSelectCard(team: Ucl26Team, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(GlassWhite, RoundedCornerShape(12.dp))
-            .clickable { onClick() }
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(32.dp).background(Color.White.copy(0.1f), CircleShape)) // Logo Placeholder
-            Spacer(Modifier.width(12.dp))
-            Text(team.name, color = Color.White, fontSize = 16.sp)
-        }
-        
-        Icon(
-            imageVector = Icons.Default.Add,
-            contentDescription = null,
-            tint = GoldAccent
-        )
     }
 }
