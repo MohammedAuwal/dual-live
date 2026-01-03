@@ -17,10 +17,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavHostController
 import com.duallive.app.ucl2026.viewmodel.Ucl26ViewModel
 
-// PRIVATE COLORS TO PREVENT AMBIGUITY
 private val LocalNavy = Color(0xFF00122E)
 private val LocalGold = Color(0xFFD4AF37)
 private val LocalGlass = Color(0x1AFFFFFF)
@@ -29,8 +27,9 @@ private val LocalGlass = Color(0x1AFFFFFF)
 @Composable
 fun Ucl26LeagueScreen(
     leagueId: Int,
-    navController: NavHostController,
-    viewModel: Ucl26ViewModel
+    viewModel: Ucl26ViewModel,
+    onNavigateToMatches: () -> Unit,
+    onNavigateToBracket: () -> Unit
 ) {
     val teams by viewModel.standings.collectAsState()
     val round by viewModel.currentRound.collectAsState()
@@ -50,12 +49,10 @@ fun Ucl26LeagueScreen(
                         if (round < 8) {
                             viewModel.nextRound()
                         } else {
-                            // After Round 8, generate bracket and move to bracket screen
                             viewModel.nextRound() 
-                            navController.navigate("new_ucl_bracket")
+                            onNavigateToBracket()
                         }
                     }) {
-                        // Change icon to a tree/bracket icon if round 8 is reached
                         Icon(
                             imageVector = if (round < 8) Icons.Default.Refresh else Icons.Default.AccountTree, 
                             contentDescription = "Next Round", 
@@ -68,7 +65,7 @@ fun Ucl26LeagueScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { navController.navigate("new_ucl_matches") },
+                onClick = { onNavigateToMatches() },
                 containerColor = LocalGold
             ) {
                 Icon(Icons.Default.Edit, contentDescription = "Scores", tint = LocalNavy)
@@ -77,7 +74,6 @@ fun Ucl26LeagueScreen(
         containerColor = LocalNavy
     ) { paddingValues ->
         Column(modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
-            // Table Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,7 +91,6 @@ fun Ucl26LeagueScreen(
                     val pos = index + 1
                     Card(colors = CardDefaults.cardColors(containerColor = LocalGlass)) {
                         Row(modifier = Modifier.padding(12.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            // Top 8 highlight for qualification
                             Text("$pos", Modifier.weight(0.12f), color = if(pos <= 8) Color.Green else Color.White)
                             Text(team.teamName.uppercase(), Modifier.weight(0.5f), color = Color.White, fontSize = 13.sp)
                             Text("${team.goalDifference}", Modifier.weight(0.15f), color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
