@@ -20,6 +20,7 @@ import com.duallive.app.ui.components.GlassCard
 fun HomeScreen(
     onNavigateToClassic: () -> Unit,
     onNavigateToUCL: () -> Unit,
+    onNavigateToNewUCL: () -> Unit,
     onJoinSubmit: (String) -> Unit
 ) {
     var joinCode by remember { mutableStateOf("") }
@@ -30,7 +31,6 @@ fun HomeScreen(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // Welcome Header
         item {
             Column(modifier = Modifier.padding(top = 20.dp)) {
                 Text(
@@ -47,81 +47,61 @@ fun HomeScreen(
             }
         }
 
-        // Classic League Entry
         item {
             GlassCard(
                 modifier = Modifier.clickable { onNavigateToClassic() },
                 tintColor = Color.White
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.EmojiEvents,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(48.dp)
-                    )
+                    Icon(imageVector = Icons.Default.EmojiEvents, contentDescription = null, tint = Color.White, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text(
-                            "Classic League",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Round-robin points table",
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 14.sp
-                        )
+                        Text("Classic League", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("Round-robin points table", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
                     }
                 }
             }
         }
 
-        // UCL League Entry
         item {
             GlassCard(
                 modifier = Modifier.clickable { onNavigateToUCL() },
-                tintColor = Color(0xFFE3BC63) // UCL Gold tint
+                tintColor = Color(0xFFE3BC63)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = null,
-                        tint = Color(0xFFE3BC63),
-                        modifier = Modifier.size(48.dp)
-                    )
+                    Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFFE3BC63), modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text(
-                            "UCL League",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Groups & Knockout format",
-                            color = Color.White.copy(alpha = 0.6f),
-                            fontSize = 14.sp
-                        )
+                        Text("UCL League", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("Groups & Knockout format", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
                     }
                 }
             }
         }
 
-        // Join League Section
+        item {
+            GlassCard(
+                modifier = Modifier.clickable { onNavigateToNewUCL() },
+                tintColor = Color(0xFF00BFFF)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFF00BFFF), modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("New UCL League", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        Text("Swiss / Dynamic league tracking", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+
         item {
             GlassCard {
-                Text(
-                    "Join a Tournament",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
+                Text("Join a Tournament", color = Color.White, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
                 OutlinedTextField(
                     value = joinCode,
                     onValueChange = { joinCode = it },
-                    placeholder = { Text("Enter Invite Code (DL-XXXX)", color = Color.White.copy(alpha = 0.4f)) },
+                    placeholder = { Text("Enter Invite Code", color = Color.White.copy(alpha = 0.4f)) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.White,
