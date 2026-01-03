@@ -14,21 +14,45 @@ class Ucl26ViewModel : ViewModel() {
     private val _matches = MutableStateFlow<List<Ucl26Match>>(emptyList())
     val matches: StateFlow<List<Ucl26Match>> = _matches
 
+    private val _currentRound = MutableStateFlow(1)
+    val currentRound: StateFlow<Int> = _currentRound
+
     fun initializeTournament(names: List<String>) {
         val initialTeams = names.mapIndexed { index, name ->
             Ucl26StandingRow(teamId = index + 1, teamName = name)
         }
         _standings.value = initialTeams
-        
-        // Example: Create some dummy matches for Round 1
-        // In a real Swiss system, you'd generate these based on rank
-        val initialMatches = mutableListOf<Ucl26Match>()
-        for (i in 0 until names.size step 2) {
-            if (i + 1 < names.size) {
-                initialMatches.add(Ucl26Match(matchId = i, homeTeamId = i + 1, awayTeamId = i + 2))
+        generateRound(1)
+    }
+
+    private fun generateRound(roundNumber: Int) {
+        val sortedTeams = _standings.value.sortedByDescending { it.points }
+        val newMatches = mutableListOf<Ucl26Match>()
+        val pairedIds = mutableSetOf<Int>()
+
+        for (i in sortedTeams.indices) {
+            val homeTeam = sortedTeams[i]
+            if (homeTeam.teamId in pairedIds) continue
+
+            // Find the closest opponent in standings not yet paired
+            for (j in i + 1 until sortedTeams.size) {
+                val awayTeam = sortedTeams[j]
+                if (awayTeam.teamId in pairedIds) continue
+                
+                // Add match logic
+                newMatches.add(
+                    Ucl26Match(
+                        matchId = _matches.value.size + newMatches.size + 1,
+                        homeTeamId = homeTeam.teamId,
+                        awayTeamId = awayTeam.teamId
+                    )
+                )
+                pairedIds.add(homeTeam.teamId)
+                pairedIds.add(awayTeam.teamId)
+                break
             }
         }
-        _matches.value = initialMatches
+        _matches.update { it + newMatches }
     }
 
     fun updateScore(matchId: Int, homeScore: Int, awayScore: Int) {
@@ -47,27 +71,29 @@ class Ucl26ViewModel : ViewModel() {
         val playedMatches = _matches.value.filter { it.isPlayed }
 
         val updatedTeams = currentTeams.map { team ->
-            var pts = 0
-            var mp = 0
-            var gd = 0
-            
+            var pts = 0; var mp = 0; var gd = 0
             playedMatches.forEach { m ->
                 if (m.homeTeamId == team.teamId) {
-                    mp++
-                    gd += (m.homeScore!! - m.awayScore!!)
+                    mp++; gd += (m.homeScore!! - m.awayScore!!)
                     if (m.homeScore!! > m.awayScore!!) pts += 3
                     else if (m.homeScore!! == m.awayScore!!) pts += 1
                 }
                 if (m.awayTeamId == team.teamId) {
-                    mp++
-                    gd += (m.awayScore!! - m.homeScore!!)
+                    mp++; gd += (m.awayScore!! - m.homeScore!!)
                     if (m.awayScore!! > m.homeScore!!) pts += 3
-                    else if (m.homeScore!! == m.awayScore!!) pts += 1
+                    else if (m.awayScore!! == m.homeScore!!) pts += 1
                 }
             }
             team.copy(matchesPlayed = mp, points = pts, goalDifference = gd)
         }.sortedWith(compareByDescending<Ucl26StandingRow> { it.points }.thenByDescending { it.goalDifference })
 
         _standings.value = updatedTeams
+    }
+
+    fun nextRound() {
+        if (_currentRound.value < 8) {
+            _currentRound.value += 1
+            generateRound(_currentRound.value)
+        }
     }
 }

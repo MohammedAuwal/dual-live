@@ -91,6 +91,7 @@ fun AppNavGraph(
             Ucl26RegistrationScreen(
                 onTeamsConfirmed = { teamNames ->
                     ucl26ViewModel.initializeTournament(teamNames)
+                    // Move to the league table
                     navController.navigate("new_ucl_league/1")
                 }
             )
@@ -102,18 +103,20 @@ fun AppNavGraph(
             arguments = listOf(navArgument("leagueId") { type = NavType.IntType })
         ) { backStackEntry ->
             val leagueId = backStackEntry.arguments?.getInt("leagueId") ?: 0
-            val teams by ucl26ViewModel.standings.collectAsState()
-
+            
             Ucl26LeagueScreen(
                 leagueId = leagueId,
                 navController = navController,
-                teams = teams
+                viewModel = ucl26ViewModel // Added missing viewModel parameter
             )
         }
 
         // --- NEW UCL 2026: MATCH CENTER (SCORE ENTRY) ---
         composable("new_ucl_matches") {
-            Ucl26MatchScreen(navController = navController, viewModel = ucl26ViewModel)
+            Ucl26MatchScreen(
+                navController = navController, 
+                viewModel = ucl26ViewModel
+            )
         }
     }
 }
