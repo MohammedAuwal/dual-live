@@ -10,4 +10,5 @@ data class Ucl26RegistrationState(
     val teamsInPot4 = selectedTeams.filter { it.pot == 4 }
     
     val totalCount = selectedTeams.size
+    val remainingCount = 36 - totalCount
 }
