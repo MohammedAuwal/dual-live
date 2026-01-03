@@ -52,11 +52,11 @@ fun AppNavGraph(
         }
 
         composable("ucl_list") {
-            val leagues by leagueViewModel.getLeaguesByType(LeagueType.UCL_OLD).observeAsState(initial = emptyList())
+            val leagues by leagueViewModel.getLeaguesByType(LeagueType.UCL).observeAsState(initial = emptyList())
             LeagueListScreen(
                 leagues = leagues,
-                type = LeagueType.UCL_OLD,
-                onAddLeagueClick = { navController.navigate("create_league/UCL_OLD") },
+                type = LeagueType.UCL,
+                onAddLeagueClick = { navController.navigate("create_league/UCL") },
                 onLeagueClick = { },
                 onDeleteLeague = { leagueViewModel.deleteLeague(it) }
             )

@@ -26,7 +26,12 @@ class Ucl26ViewModel : ViewModel() {
     }
 
     private fun generateRound(roundNumber: Int) {
-        val sortedTeams = _standings.value.sortedByDescending { it.points }
+        // Swiss Pairing: Sort by Points, then GD
+        val sortedTeams = _standings.value.sortedWith(
+            compareByDescending<Ucl26StandingRow> { it.points }
+                .thenByDescending { it.goalDifference }
+        )
+        
         val newMatches = mutableListOf<Ucl26Match>()
         val pairedIds = mutableSetOf<Int>()
 
@@ -69,26 +74,24 @@ class Ucl26ViewModel : ViewModel() {
         val playedMatches = _matches.value.filter { it.isPlayed }
 
         val updatedTeams = currentTeams.map { team ->
-            var pts = 0
-            var mp = 0
-            var gd = 0
-            
+            var pts = 0; var mp = 0; var gd = 0
             playedMatches.forEach { m ->
                 if (m.homeTeamId == team.teamId) {
-                    mp++
-                    gd += (m.homeScore!! - m.awayScore!!)
+                    mp++; gd += (m.homeScore!! - m.awayScore!!)
                     if (m.homeScore!! > m.awayScore!!) pts += 3
                     else if (m.homeScore!! == m.awayScore!!) pts += 1
                 }
                 if (m.awayTeamId == team.teamId) {
-                    mp++
-                    gd += (m.awayScore!! - m.homeScore!!)
+                    mp++; gd += (m.awayScore!! - m.homeScore!!)
                     if (m.awayScore!! > m.homeScore!!) pts += 3
                     else if (m.awayScore!! == m.homeScore!!) pts += 1
                 }
             }
             team.copy(matchesPlayed = mp, points = pts, goalDifference = gd)
-        }.sortedWith(compareByDescending<Ucl26StandingRow> { it.points }.thenByDescending { it.goalDifference })
+        }.sortedWith(
+            compareByDescending<Ucl26StandingRow> { it.points }
+                .thenByDescending { it.goalDifference }
+        )
 
         _standings.value = updatedTeams
     }

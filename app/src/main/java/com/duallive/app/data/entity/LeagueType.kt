@@ -2,6 +2,6 @@ package com.duallive.app.data.entity
 
 enum class LeagueType {
     CLASSIC,
-    UCL_OLD,
-    UCL_2026   // The fresh Swiss model
+    UCL,        // Restore this so MainActivity and CreateLeagueScreen work
+    UCL_2026    // For the fresh 36-team Swiss model
 }
