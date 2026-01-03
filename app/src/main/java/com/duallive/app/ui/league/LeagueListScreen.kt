@@ -30,10 +30,18 @@ fun LeagueListScreen(
 ) {
     var leagueToDelete by remember { mutableStateOf<League?>(null) }
     
-    // Choose theme colors based on the league type
-    val isUCL = type == LeagueType.UCL
-    val accentColor = if (isUCL) Color(0xFFE3BC63) else Color.White
-    val screenTitle = if (isUCL) "UCL Tournaments" else "Classic Leagues"
+    // THEME LOGIC: Now handling all 3 types correctly to prevent "dead" buttons
+    val accentColor = when (type) {
+        LeagueType.UCL -> Color(0xFFE3BC63)   // Gold for Old UCL
+        LeagueType.SWISS -> Color(0xFF00BFFF) // Blue for New Swiss
+        else -> Color.White                   // White for Classic
+    }
+
+    val screenTitle = when (type) {
+        LeagueType.UCL -> "UCL Tournaments"
+        LeagueType.SWISS -> "New UCL Swiss"
+        else -> "Classic Leagues"
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -54,7 +62,8 @@ fun LeagueListScreen(
                     fontWeight = FontWeight.ExtraBold
                 )
                 
-                IconButton(onClick = onAddLeagueClick) {
+                // Fixed: Explicitly calling the lambda
+                IconButton(onClick = { onAddLeagueClick() }) {
                     Icon(Icons.Default.Add, contentDescription = "Add", tint = accentColor)
                 }
             }
