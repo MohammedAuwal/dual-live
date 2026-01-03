@@ -80,16 +80,21 @@ fun HomeScreen(
         }
 
         item {
+            // FIX: Explicitly handling the click inside a Box to ensure the lambda triggers
             GlassCard(
-                modifier = Modifier.clickable { onNavigateToNewUCL() },
                 tintColor = Color(0xFF00BFFF)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFF00BFFF), modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text("New UCL League", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        Text("Swiss / Dynamic league tracking", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+                Box(modifier = Modifier.fillMaxWidth().clickable { onNavigateToNewUCL() }) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 4.dp), 
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Star, contentDescription = null, tint = Color(0xFF00BFFF), modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text("New UCL League", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text("Swiss / Dynamic league tracking", color = Color.White.copy(alpha = 0.6f), fontSize = 14.sp)
+                        }
                     }
                 }
             }
