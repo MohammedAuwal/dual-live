@@ -34,12 +34,10 @@ class Ucl26ViewModel : ViewModel() {
             val homeTeam = sortedTeams[i]
             if (homeTeam.teamId in pairedIds) continue
 
-            // Find the closest opponent in standings not yet paired
             for (j in i + 1 until sortedTeams.size) {
                 val awayTeam = sortedTeams[j]
                 if (awayTeam.teamId in pairedIds) continue
                 
-                // Add match logic
                 newMatches.add(
                     Ucl26Match(
                         matchId = _matches.value.size + newMatches.size + 1,
@@ -71,15 +69,20 @@ class Ucl26ViewModel : ViewModel() {
         val playedMatches = _matches.value.filter { it.isPlayed }
 
         val updatedTeams = currentTeams.map { team ->
-            var pts = 0; var mp = 0; var gd = 0
+            var pts = 0
+            var mp = 0
+            var gd = 0
+            
             playedMatches.forEach { m ->
                 if (m.homeTeamId == team.teamId) {
-                    mp++; gd += (m.homeScore!! - m.awayScore!!)
+                    mp++
+                    gd += (m.homeScore!! - m.awayScore!!)
                     if (m.homeScore!! > m.awayScore!!) pts += 3
                     else if (m.homeScore!! == m.awayScore!!) pts += 1
                 }
                 if (m.awayTeamId == team.teamId) {
-                    mp++; gd += (m.awayScore!! - m.homeScore!!)
+                    mp++
+                    gd += (m.awayScore!! - m.homeScore!!)
                     if (m.awayScore!! > m.homeScore!!) pts += 3
                     else if (m.awayScore!! == m.homeScore!!) pts += 1
                 }
