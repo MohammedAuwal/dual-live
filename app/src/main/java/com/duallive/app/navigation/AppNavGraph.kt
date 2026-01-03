@@ -35,31 +35,46 @@ fun AppNavGraph(
             HomeScreen(
                 onNavigateToClassic = { navController.navigate("classic_list") },
                 onNavigateToUCL = { navController.navigate("ucl_list") },
-                onNavigateToNewUCL = { navController.navigate("new_ucl_team_registration") },
+                onNavigateToNewUCL = { navController.navigate("swiss_list") }, // FIXED: Goes to List first, not registration
                 onJoinSubmit = { code -> println("Joining league with code: $code") }
             )
         }
 
-        // --- CLASSIC LEAGUE ---
+        // --- CLASSIC LEAGUE LIST ---
         composable("classic_list") {
             val leagues by leagueViewModel.getLeaguesByType(LeagueType.CLASSIC).observeAsState(initial = emptyList())
             LeagueListScreen(
                 leagues = leagues,
                 type = LeagueType.CLASSIC,
                 onAddLeagueClick = { navController.navigate("create_league/CLASSIC") },
-                onLeagueClick = { /* Handle Click */ },
+                onLeagueClick = { league -> navController.navigate("team_list/${league.id}") },
                 onDeleteLeague = { leagueViewModel.deleteLeague(it) }
             )
         }
 
-        // --- OLD UCL VERSION ---
+        // --- OLD UCL VERSION LIST ---
         composable("ucl_list") {
             val leagues by leagueViewModel.getLeaguesByType(LeagueType.UCL).observeAsState(initial = emptyList())
             LeagueListScreen(
                 leagues = leagues,
                 type = LeagueType.UCL,
                 onAddLeagueClick = { navController.navigate("create_league/UCL") },
-                onLeagueClick = { /* Handle Click */ },
+                onLeagueClick = { league -> navController.navigate("team_list/${league.id}") },
+                onDeleteLeague = { leagueViewModel.deleteLeague(it) }
+            )
+        }
+
+        // --- NEW SWISS UCL LIST (FIXES THE BLANK SCREEN) ---
+        composable("swiss_list") {
+            val leagues by leagueViewModel.getLeaguesByType(LeagueType.SWISS).observeAsState(initial = emptyList())
+            LeagueListScreen(
+                leagues = leagues,
+                type = LeagueType.SWISS,
+                onAddLeagueClick = { navController.navigate("create_league/SWISS") }, // This ensures + shows "New UCL Swiss"
+                onLeagueClick = { league -> 
+                    // Logic: If new league, go to registration, else go to table
+                    navController.navigate("new_ucl_league/${league.id}") 
+                },
                 onDeleteLeague = { leagueViewModel.deleteLeague(it) }
             )
         }
@@ -78,7 +93,7 @@ fun AppNavGraph(
                     leagueViewModel.createLeague(name, desc, isHA, type)
                     navController.popBackStack()
                 },
-                onBack = { navController.popBackStack() } // FIXED: Added missing parameter
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -106,18 +121,12 @@ fun AppNavGraph(
 
         // --- NEW UCL 2026: MATCH CENTER ---
         composable("new_ucl_matches") {
-            Ucl26MatchScreen(
-                viewModel = ucl26ViewModel,
-                onBack = { navController.popBackStack() }
-            )
+            Ucl26MatchScreen(viewModel = ucl26ViewModel, onBack = { navController.popBackStack() })
         }
 
         // --- NEW UCL 2026: KNOCKOUT BRACKET ---
         composable("new_ucl_bracket") {
-            Ucl26BracketScreen(
-                viewModel = ucl26ViewModel,
-                onBack = { navController.popBackStack() }
-            )
+            Ucl26BracketScreen(viewModel = ucl26ViewModel, onBack = { navController.popBackStack() })
         }
     }
 }
